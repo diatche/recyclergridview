@@ -1,0 +1,33 @@
+{
+  "name": "recyclergridview",
+  "version": "0.0.1",
+  "description": "A cross-platform infinite 2D scrollable view with efficient cell recycling using Animated framework, without using a scroll view.",
+  "main": "dist/reactnative/index.js",
+  "scripts": {
+    "test": "yarn"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/diatche/recyclergridview.git"
+  },
+  "keywords": [
+    "React-native",
+    "recyclerview",
+    "infinite",
+    "scroll",
+    "listview",
+    "flatlist-alternative",
+    "flatlist",
+    "60fps",
+    "cross-platform",
+    "web",
+    "react-native-web",
+    "performance"
+  ],
+  "author": "Pavel Diatchenko <diatche@gmail.com>",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/diatche/recyclergridview/issues"
+  },
+  "homepage": "https://github.com/diatche/recyclergridview#readme"
+}
