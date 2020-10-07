@@ -1,7 +1,7 @@
 {
   "name": "recyclergridview",
   "version": "0.0.1",
-  "description": "A cross-platform infinite 2D scrollable view with efficient cell recycling using Animated framework, without using a scroll view.",
+  "description": "A cross-platform infinite 2D scrollable view with efficient cell recycling using Reanimated framework, without using a scroll view.",
   "main": "dist/reactnative/index.js",
   "module": "dist/reactnative/index.js",
   "browser": "dist/reactnative/index.js",
@@ -44,6 +44,7 @@
   "peerDependencies": {
     "react": ">=16.11.0",
     "react-native": ">=0.62.0 <1.0.0",
+    "react-native-reanimated": "2.x",
     "react-remove-scroll": "2.x"
   },
   "devDependencies": {
@@ -56,6 +57,7 @@
     "acorn": "^6.4.2",
     "acorn-jsx": "^5.3.1",
     "jest": "^26.5.2",
+    "react-native-reanimated": "^2.0.0-alpha.7",
     "react-remove-scroll": "^2.4.0",
     "rollup": "^2.28.2",
     "ts-jest": "^26.4.1",
