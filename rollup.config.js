@@ -88,8 +88,8 @@ let rConfig = {
             name: 'RecyclerGridView',
             // file: pkg.browser,
             dir: 'dist/web',
-            // format: 'es',
-            format: 'umd',
+            format: 'es',
+            // format: 'umd',
             sourcemap: true,
             // plugins: [getBabelOutputPlugin({ presets: ['@babel/preset-env'] })]
         },
@@ -103,7 +103,7 @@ let rConfig = {
         typescript({
             outDir: 'dist/web',
             jsx: 'react',
-            types: ['react', 'react-native'],
+            types: ['react'],
             // typescript: require('typescript'),
             // useTsconfigDeclarationDir: true,
             // tsconfigOverride: {
