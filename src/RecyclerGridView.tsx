@@ -29,7 +29,7 @@ import ScrollLock from "./ScrollLock";
 const kPanSpeedMin = 0.001;
 
 const kDefaultProps = {
-    useNativeDriver: true,
+    useNativeDriver: false,
 };
 
 export interface IScrollInfo {
@@ -142,7 +142,7 @@ export default class RecyclerGridView extends React.PureComponent<
         this.containerSize$ = new Animated.ValueXY();
         let sub = this.containerSize$.addListener(p => {
             if (p.x <= 0 || p.y <= 0) {
-                console.warn('Ignoring invalid containerSize value: ' + JSON.stringify(p));
+                console.debug('Ignoring invalid containerSize value: ' + JSON.stringify(p));
                 return;
             }
             if (Math.abs(p.x - this._containerSize.x) < 1 && Math.abs(p.y - this._containerSize.y) < 1) {
@@ -164,7 +164,7 @@ export default class RecyclerGridView extends React.PureComponent<
         };
         sub = this.scale$.addListener(p => {
             if (p.x === 0 || p.y === 0) {
-                console.warn('Ignoring invalid scale value: ' + JSON.stringify(p));
+                console.debug('Ignoring invalid scale value: ' + JSON.stringify(p));
                 return;
             }
             if (p.x === this._scale.x && p.y === this._scale.y) {
@@ -245,7 +245,10 @@ export default class RecyclerGridView extends React.PureComponent<
                 onPanResponderStart: removeDefaultCurry(() => this._onBeginPan()),
                 onPanResponderMove: removeDefaultCurry(Animated.event(
                     [null, panGestureState],
-                    { useNativeDriver: this._useNativeDriver }
+                    {
+                        // listener: event => {},
+                        useNativeDriver: this._useNativeDriver
+                    }
                 )),
                 onPanResponderEnd: removeDefaultCurry(() => this._onEndPan()),
             });
@@ -765,6 +768,20 @@ export default class RecyclerGridView extends React.PureComponent<
                         overflow: "hidden",
                     },
                 ]}
+                // onLayout={Animated.event(
+                //     [{
+                //         nativeEvent: {
+                //             layout: {
+                //                 width: this.containerSize$.x,
+                //                 height: this.containerSize$.y,
+                //             }
+                //         }
+                //     }],
+                //     {
+                //         // listener: event => {},
+                //         useNativeDriver: this._useNativeDriver
+                //     }
+                // )}
                 onLayout={(event: any) => {
                     Animated.event(
                         [{
@@ -776,6 +793,7 @@ export default class RecyclerGridView extends React.PureComponent<
                             }
                         }],
                         {
+                            // listener: event => {},
                             useNativeDriver: this._useNativeDriver
                         }
                     )(event);

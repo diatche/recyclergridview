@@ -141,7 +141,7 @@ export default class LayoutSource<
         };
         sub = this.scale$.addListener(p => {
             if (p.x === 0 || p.y === 0) {
-                console.warn('Ignoring invalid scale value: ' + JSON.stringify(p));
+                console.debug('Ignoring invalid scale value: ' + JSON.stringify(p));
                 return;
             }
             if (p.x === this._scale.x && p.y === this._scale.y) {
