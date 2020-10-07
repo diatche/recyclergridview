@@ -11,7 +11,7 @@
     "strict": true,
     "noImplicitReturns": true,
     "removeComments": false,
-    "jsx": "react-native",
+    "jsx": "react",
     "sourceMap": true,
     "skipLibCheck": true,
     "downlevelIteration": true,
