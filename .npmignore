@@ -103,7 +103,11 @@ dist
 # TernJS port file
 .tern-port
 
+# VSCode
+.vscode/.react
+
 # Project
 .vscode/
+temp/
 tests/
 examples/
