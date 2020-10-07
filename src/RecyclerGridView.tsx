@@ -135,6 +135,9 @@ export default class RecyclerGridView extends React.PureComponent<
     constructor(props: RecyclerCollectionViewProps) {
         super(props);
         this._useNativeDriver = props.useNativeDriver || kDefaultProps.useNativeDriver;
+        if (this._useNativeDriver) {
+            throw new Error('Using native driver is not supported due to limitations with animating layout props.');
+        }
 
         this.layoutSources =[ ...props.layoutSources ];
 
@@ -856,6 +859,7 @@ export default class RecyclerGridView extends React.PureComponent<
                 item={item}
                 layoutSource={layoutSource}
                 renderItem={() => this.props.renderItem(item, layoutSource, this)}
+                useNativeDriver={this._useNativeDriver}
             />
         );
     }

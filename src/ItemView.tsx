@@ -8,6 +8,7 @@ export interface ItemViewProps {
     item: IItem;
     layoutSource: LayoutSource;
     renderItem: () => React.ReactNode;
+    useNativeDriver: boolean;
 }
 
 const ItemView = React.memo(({
@@ -15,6 +16,7 @@ const ItemView = React.memo(({
     item,
     layoutSource,
     renderItem,
+    useNativeDriver,
 }: ItemViewProps) => {
     const [renderNonce, setRenderNonce] = React.useState(0);
     
@@ -26,7 +28,7 @@ const ItemView = React.memo(({
             Animated.timing(item.animated.opacity, {
                 toValue: 1,
                 duration: layoutSource.props.showDuration,
-                useNativeDriver: true,
+                useNativeDriver,
             }).start();
         } // Else, no duration: opacity set in item update
 
