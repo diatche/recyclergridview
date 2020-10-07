@@ -41,83 +41,87 @@ let baseConfig = {
     plugins: [],
 };
 
+let rnConfig = {
+    ...baseConfig,
+    output: [
+        // {
+        //     ...rnOutputDefaults,
+        //     file: pkg.main,
+        //     // dir: 'dist/reactnative',
+        //     format: 'cjs',
+        //     sourcemap: true,
+        // },
+        {
+            ...rnOutputDefaults,
+            // name: 'RecyclerGridView',
+            // file: pkg.module,
+            dir: 'dist/reactnative',
+            // format: 'umd',
+            format: 'es',
+            sourcemap: true,
+        },
+    ],
+    // acornInjectPlugins: [jsx()],
+    plugins: [
+        ...baseConfig.plugins,
+        typescript({
+            outDir: 'dist/reactnative',
+            // jsx: 'react-native',
+            jsx: 'react',
+            types: ['react', 'react-native'],
+            // typescript: require('typescript'),
+            // useTsconfigDeclarationDir: true,
+            // tsconfigOverride: {
+            //     compilerOptions: {
+            //         module: 'ESNext',
+            //     }
+            // }
+        }),
+    ],
+};
+
+let rConfig = {
+    ...baseConfig,
+    output: [
+        {
+            ...rOutputDefaults,
+            name: 'RecyclerGridView',
+            // file: pkg.browser,
+            dir: 'dist/web',
+            // format: 'es',
+            format: 'umd',
+            sourcemap: true,
+            // plugins: [getBabelOutputPlugin({ presets: ['@babel/preset-env'] })]
+        },
+    ],
+    plugins: [
+        ...baseConfig.plugins,
+        // babel({
+        //     presets: ['@babel/preset-react'],
+        //     exclude: ['node_modules/**'],
+        // }),
+        typescript({
+            outDir: 'dist/web',
+            jsx: 'react',
+            types: ['react', 'react-native'],
+            // typescript: require('typescript'),
+            // useTsconfigDeclarationDir: true,
+            // tsconfigOverride: {
+            //     compilerOptions: {
+            //         module: 'ESNext',
+            //     }
+            // }
+        }),
+        alias({
+            // 'react-native': 'react-native-web',
+            entries: [
+                { find: /^react-native$/, replacement: 'react-native-web' },
+            ]
+        }),
+    ]
+};
+
 export default [
-    {
-        ...baseConfig,
-        output: [
-            // {
-            //     ...rnOutputDefaults,
-            //     file: pkg.main,
-            //     // dir: 'dist/reactnative',
-            //     format: 'cjs',
-            //     sourcemap: true,
-            // },
-            {
-                ...rnOutputDefaults,
-                // name: 'RecyclerGridView',
-                // file: pkg.module,
-                dir: 'dist/reactnative',
-                // format: 'umd',
-                format: 'es',
-                sourcemap: true,
-            },
-        ],
-        // acornInjectPlugins: [jsx()],
-        plugins: [
-            ...baseConfig.plugins,
-            typescript({
-                outDir: 'dist/reactnative',
-                // jsx: 'react-native',
-                jsx: 'react',
-                types: ['react', 'react-native'],
-                // typescript: require('typescript'),
-                // useTsconfigDeclarationDir: true,
-                // tsconfigOverride: {
-                //     compilerOptions: {
-                //         module: 'ESNext',
-                //     }
-                // }
-            }),
-        ],
-    },
-    // {
-    //     ...baseConfig,
-    //     output: [
-    //         {
-    //             ...rOutputDefaults,
-    //             name: 'RecyclerGridView',
-    //             // file: pkg.browser,
-    //             dir: 'dist/web',
-    //             // format: 'es',
-    //             format: 'umd',
-    //             sourcemap: true,
-    //             // plugins: [getBabelOutputPlugin({ presets: ['@babel/preset-env'] })]
-    //         },
-    //     ],
-    //     plugins: [
-    //         ...baseConfig.plugins,
-    //         // babel({
-    //         //     presets: ['@babel/preset-react'],
-    //         //     exclude: ['node_modules/**'],
-    //         // }),
-    //         typescript({
-    //             outDir: 'dist/web',
-    //             jsx: 'react',
-    //             types: ['react', 'react-native'],
-    //             // typescript: require('typescript'),
-    //             // useTsconfigDeclarationDir: true,
-    //             // tsconfigOverride: {
-    //             //     compilerOptions: {
-    //             //         module: 'ESNext',
-    //             //     }
-    //             // }
-    //         }),
-    //         alias({
-    //             // 'react-native': 'react-native-web',
-    //             entries: [
-    //                 { find: /^react-native$/, replacement: 'react-native-web' },
-    //             ]
-    //         }),
-    //     ]
-    // }
+    rnConfig,
+    // rConfig,
 ];
