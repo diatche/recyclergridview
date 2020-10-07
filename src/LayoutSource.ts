@@ -1,4 +1,4 @@
-import { Animated } from "react-native";
+import Animated from 'react-native-reanimated';
 import { kInsetKeys, kZeroInsets } from "./const";
 import {
     AnimatedValueDerivedInput,
@@ -73,14 +73,14 @@ export default class LayoutSource<
     readonly id: string;
     origin$: Animated.ValueXY;
     scale$: Animated.ValueXY;
-    insets$: IInsets<Animated.Value>;
+    insets$: IInsets<Animated.Value<number>>;
 
     private _origin: IPoint;
     private _scale: IPoint;
     private _insets: IInsets<number>;
 
     private _itemQueues: { [reuseID: string]: IItem[] };
-    private _animatedSubscriptions: { [id: string]: Animated.Value | Animated.ValueXY } = {};
+    private _animatedSubscriptions: { [id: string]: Animated.Value<number> | Animated.ValueXY } = {};
     private _updating = false;
 
     constructor(props: Props) {
@@ -98,10 +98,10 @@ export default class LayoutSource<
         this.scale$ = new Animated.ValueXY({ ...this._scale });
 
         this.insets$ = {
-            top: new Animated.Value(0),
-            right: new Animated.Value(0),
-            bottom: new Animated.Value(0),
-            left: new Animated.Value(0),
+            top: new Animated.Value<number>(0),
+            right: new Animated.Value<number>(0),
+            bottom: new Animated.Value<number>(0),
+            left: new Animated.Value<number>(0),
         };
         this._insets = { ...kZeroInsets };
     }
@@ -569,8 +569,8 @@ export default class LayoutSource<
             animated: {
                 contentLayout,
                 viewLayout,
-                opacity: new Animated.Value(0),
-                renderNonce: new Animated.Value(0),
+                opacity: new Animated.Value<number>(0),
+                renderNonce: new Animated.Value<number>(0),
             },
         };
         item.reuseID = this.getReuseID(index);

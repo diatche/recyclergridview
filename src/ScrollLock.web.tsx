@@ -1,9 +1,9 @@
 import React from "react";
-import { Animated } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { RemoveScroll } from "react-remove-scroll";
 
 export interface ScrollLockProps {
-    locked: Animated.Value;
+    locked: Animated.Value<number>;
 }
 
 /**

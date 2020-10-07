@@ -1,11 +1,11 @@
 import React from "react";
 import {
-    Animated,
     AppState,
     PanResponder,
     PanResponderInstance,
     ViewProps,
 } from "react-native";
+import Animated from 'react-native-reanimated';
 import ItemView from "./ItemView";
 import { LayoutSource } from "./internal";
 import {
@@ -126,9 +126,9 @@ export default class RecyclerGridView extends React.PureComponent<
     private _itemViewCounter = 0;
     private _needsRender = true;
     private _emptyRender = false;
-    private _animatedSubscriptions: { [id: string]: Animated.Value | Animated.ValueXY } = {};
+    private _animatedSubscriptions: { [id: string]: Animated.Value<number> | Animated.ValueXY } = {};
     private _memoryWarningListener?: () => void;
-    private _scrollLocked$ = new Animated.Value(0);
+    private _scrollLocked$ = new Animated.Value<number>(0);
     private _scrollLocked = false;
     private _useNativeDriver: boolean;
 

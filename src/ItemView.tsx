@@ -1,5 +1,5 @@
 import React from 'react';
-import { Animated } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { LayoutSource } from './internal';
 import { IItem } from './types';
 

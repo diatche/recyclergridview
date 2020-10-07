@@ -1,4 +1,4 @@
-import { Animated } from 'react-native';
+import Animated from 'react-native-reanimated';
 
 if (!Animated.subtract) {
     // Some versions of React Native Web (e.g. 0.11.7) are missing `subtract`.

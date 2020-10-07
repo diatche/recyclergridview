@@ -1,5 +1,6 @@
 import React from "react";
-import { View, Animated } from 'react-native';
+import { View } from 'react-native';
+import Animated from 'react-native-reanimated';
 
 export declare type AxisType = 'topAxis' | 'rightAxis' | 'bottomAxis' | 'leftAxis';
 export declare type Direction = 'horizontal' | 'vertical';
@@ -29,15 +30,15 @@ export interface IItemLayout {
 export interface IAnimatedItemLayout {
     contentLayout: ILayout<MutableAnimatedPoint>;
     viewLayout: ILayout<IAnimatedPoint>;
-    opacity: Animated.Value;
-    renderNonce: Animated.Value;
+    opacity: Animated.Value<number>;
+    renderNonce: Animated.Value<number>;
 }
 
 export interface IAnimatedAxisLayout {
-    length: Animated.Value;
+    length: Animated.Value<number>;
 }
 
-export type AnimatedValueInput = number | Animated.Value;
+export type AnimatedValueInput = number | Animated.Value<number>;
 export type AnimatedValueDerivedInput<Info> = AnimatedValueInput | ((info: Info) => AnimatedValueInput);
 
 export interface IAnimatedValueXYInput {
@@ -48,13 +49,13 @@ export interface IAnimatedValueXYInput {
 export type AnimatedValueXYDerivedInput<Info> = Partial<IAnimatedValueXYInput> | Animated.ValueXY | ((info: Info) => Partial<IAnimatedValueXYInput> | Animated.ValueXY);
 
 export interface IAnimatedPoint {
-    x: Animated.Value | Animated.AnimatedInterpolation;
-    y: Animated.Value | Animated.AnimatedInterpolation;
+    x: Animated.Value<number> | Animated.AnimatedInterpolation;
+    y: Animated.Value<number> | Animated.AnimatedInterpolation;
 }
 
 export type MutableAnimatedPoint = Animated.ValueXY | {
-    x: Animated.Value;
-    y: Animated.Value;
+    x: Animated.Value<number>;
+    y: Animated.Value<number>;
 };
 
 export interface IItemUpdate<T> {

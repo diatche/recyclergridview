@@ -1,2 +1,2 @@
 # RecyclerGridView
-A cross-platform infinite 2D scrollable view with efficient cell recycling using Animated framework, without using a scroll view.
+A cross-platform infinite 2D scrollable view with efficient cell recycling using Reanimated framework, without using a scroll view.
