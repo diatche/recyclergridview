@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "lib": ["es6", "dom"], // target Node.js(v6)
-    "types": ["react", "react-native"],
+    // "types": ["react", "react-native"],
     "module": "ESNext",
     "target": "es5", // target Node.js(v6)
     "moduleResolution": "node", // target Node.js(v6)
@@ -11,7 +11,7 @@
     "strict": true,
     "noImplicitReturns": true,
     "removeComments": false,
-    "jsx": "react",
+    "jsx": "react-native",
     "sourceMap": true,
     "skipLibCheck": true,
     "downlevelIteration": true,
@@ -21,6 +21,7 @@
     "src/**/*"
   ],
   "exclude": [
-    "tests"
+    "tests",
+    "examples"
   ]
 }

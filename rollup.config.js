@@ -6,9 +6,9 @@ import pkg from './package.json';
 
 const outputDefaults = {
     globals: {
-        'react': 'React',
+        react: 'React',
         'react-native': 'ReactNative',
-    }
+    },
 };
 
 const rnOutputDefaults = {
@@ -16,7 +16,7 @@ const rnOutputDefaults = {
     globals: {
         ...outputDefaults.globals,
         // 'react-native': 'ReactNative',
-    }
+    },
 };
 
 const rOutputDefaults = {
@@ -25,7 +25,7 @@ const rOutputDefaults = {
         ...outputDefaults.globals,
         // 'react-native-web': 'React',
         // 'react-native': 'React',
-    }
+    },
 };
 
 let baseConfig = {
@@ -69,6 +69,7 @@ export default [
                 outDir: 'dist/reactnative',
                 // jsx: 'react-native',
                 jsx: 'react',
+                types: ['react', 'react-native'],
                 // typescript: require('typescript'),
                 // useTsconfigDeclarationDir: true,
                 // tsconfigOverride: {
@@ -102,6 +103,7 @@ export default [
     //         typescript({
     //             outDir: 'dist/web',
     //             jsx: 'react',
+    //             types: ['react', 'react-native'],
     //             // typescript: require('typescript'),
     //             // useTsconfigDeclarationDir: true,
     //             // tsconfigOverride: {
@@ -118,4 +120,4 @@ export default [
     //         }),
     //     ]
     // }
-]
+];
