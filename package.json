@@ -41,9 +41,9 @@
   },
   "homepage": "https://github.com/diatche/recyclergridview#readme",
   "peerDependencies": {
-    "react": "^16.13.1",
-    "react-native": "^0.63.3",
-    "react-remove-scroll": "^2.4.0"
+    "react": ">=16.11.0",
+    "react-native": ">=0.62.0 <1.0.0",
+    "react-remove-scroll": "2.x"
   },
   "devDependencies": {
     "@rollup/plugin-alias": "^3.1.1",
