@@ -12,9 +12,10 @@
   "scripts": {
     "test": "yarn",
     "coverage": "jest --coverage",
+    "clean": "rm -rf dist",
     "build": "rollup -c",
     "watch": "rollup -c -w",
-    "prepack": "rm -R dist 2> /dev/null; rollup -c"
+    "prepack": "yarn run clean && yarn build"
   },
   "repository": {
     "type": "git",
