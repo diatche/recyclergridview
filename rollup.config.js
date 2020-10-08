@@ -3,6 +3,8 @@ import alias from '@rollup/plugin-alias';
 // import jsx from 'acorn-jsx';
 // import { nodeResolve } from '@rollup/plugin-node-resolve';
 import pkg from './package.json';
+import copy from 'rollup-plugin-copy';
+import Path from 'path';
 
 const outputDefaults = {
     globals: {
@@ -121,7 +123,27 @@ let rConfig = {
     ]
 };
 
-export default [
+let tasks = [
     rnConfig,
     // rConfig,
 ];
+
+export default args => {
+    if (args.copy) {
+        console.debug('Copying output to: ' + args.copy);
+        return tasks.map(task => ({
+            ...task,
+            plugins: [
+                ...task.plugins,
+                copy({
+                    targets: task.output.map(output => (
+                        { src: output.dir, dest: args.copy }
+                    )),
+                    hook: 'writeBundle', // Copy after writing to disk
+                    verbose: true,
+                })
+            ],
+        }));
+    }
+    return tasks;
+};
