@@ -65,8 +65,15 @@ export interface LayoutSourceProps<T> {
      * Passing an empty string does not reuse that item.
      **/
     getReuseID?: (index: T) => string;
-    /** Renders all items when shown by default. */
-    shouldRenderItem?: (data: { item: IItem, index: T }) => boolean;
+    /**
+     * Rendering to DOM is an expensive operation. If a
+     * render of this item is not needed on update,
+     * return `false`, otherwise return `true`.
+     * 
+     * This method is called only when an item is reused,
+     * not when it is created.
+     **/
+    shouldRenderItem: (data: { item: IItem, index: T }) => boolean;
     /**
      * The duration in milliseconds of the fade-in animation,
      * when a new item is rendered. Ignored when an item is
