@@ -43,6 +43,19 @@ export interface LayoutSourceProps<T> {
      * in `insets`.
      **/
     stickyEdge?: InsetEdge;
+    /**
+     * Setting a non-zero z-index here will set the default
+     * z-index for all items.
+     * 
+     * By default, the view sets the z-index such that the
+     * visual order of items matches the order in which the
+     * layout source were added to the view. Customise this
+     * behaviour [in the view]{@link RecyclerCollectionViewProps}.
+     * 
+     * You can also set each item's z-index individually
+     * in the item's layout callback. Refer to the subclasses
+     * item layout method for more information.
+     */
     zIndex?: number;
     reuseID?: string;
     /**
@@ -78,6 +91,7 @@ export default class LayoutSource<
     private _origin: IPoint;
     private _scale: IPoint;
     private _insets: IInsets<number>;
+    private _zIndex = 0;
 
     private _itemQueues: { [reuseID: string]: IItem[] };
     private _animatedSubscriptions: { [id: string]: Animated.Value | Animated.ValueXY } = {};
@@ -114,7 +128,11 @@ export default class LayoutSource<
         return { ...this._scale };
     }
 
-    configure(view: Grid) {
+    get zIndex(): number {
+        return this.props.zIndex || this._zIndex;
+    }
+
+    configure(view: Grid, options?: { zIndex?: number }) {
         this.unconfigure();
 
         let needsForcedUpdate = false;
@@ -171,6 +189,8 @@ export default class LayoutSource<
             });
             this._animatedSubscriptions[sub] = inset$;
         });
+
+        this._zIndex = options?.zIndex || 0;
 
         if (needsForcedUpdate) {
             this.setNeedsUpdate(view, { force: true });
@@ -564,7 +584,7 @@ export default class LayoutSource<
             contentLayout: {
                 offset: zeroPoint(),
                 size: zeroPoint(),
-                zIndex: this.props.zIndex,
+                zIndex: this.zIndex,
             },
             animated: {
                 contentLayout,
@@ -588,10 +608,12 @@ export default class LayoutSource<
         }
     ) {
         item.contentLayout = {
-            zIndex: this.props.zIndex,
             ...item.contentLayout,
             ...this.getItemContentLayout(index),
         };
+        if (!item.contentLayout.zIndex) {
+            item.contentLayout.zIndex = this.zIndex;
+        }
         // console.debug(`[${this.id}] content layout ${JSON.stringify(index)}: ${JSON.stringify(item.contentLayout, null, 2)}`);
         let { offset, size } = item.contentLayout;
         let {

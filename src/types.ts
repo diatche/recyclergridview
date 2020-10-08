@@ -23,6 +23,12 @@ export interface ILayout<T> {
 export interface IItemLayout {
     offset: IPoint;
     size: IPoint;
+    /**
+     * Setting the z-index here will override
+     * the layout source's setting for this item.
+     * 
+     * See also [LayoutSourceProps]{@link LayoutSourceProps#zIndex}.
+     */
     zIndex?: number;
 }
 

@@ -29,6 +29,8 @@ import ScrollLock from "./ScrollLock";
 const kPanSpeedMin = 0.001;
 
 const kDefaultProps = {
+    zIndexStart: 10,
+    zIndexStride: 10,
     useNativeDriver: false,
 };
 
@@ -72,13 +74,31 @@ export interface RecyclerCollectionViewProps extends ViewProps {
     snapToLocation?: (info: IScrollInfo) => Partial<IPoint> | undefined;
     onViewportSizeChanged?: (collection: RecyclerGridView) => void;
     /**
-     * When `true`, enables performing animations on native side
-     * without going through the javascript bridge on every frame.
+     * The first z-index to use when adding layout sources.
+     * Defaults to 10.
+     * 
+     * If a layout source [defines their own]{@link LayoutSourceProps#zIndex}
+     * non-zero z-index, this will not override it.
+     */
+    zIndexStart?: number;
+    /**
+     * The distance between z-indexes in layout sources.
+     * Defaults to 10.
+     * 
+     * If a layout source [defines their own]{@link LayoutSourceProps#zIndex}
+     * non-zero z-index, this will not override it.
+     */
+    zIndexStride?: number;
+    /**
+     * **Not Supported**
+     * 
+     * ~~When `true`, enables performing animations on native side
+     * without going through the javascript bridge on every frame.~~
      * Falls back to javascript animation when not supported.
      * See [React Native Documentation](https://reactnative.dev/docs/animated#using-the-native-driver)
      * for more info.
      * 
-     * Defaults to `true`.
+     * Defaults to `false`.
      **/
     useNativeDriver?: boolean;
 }
@@ -321,8 +341,16 @@ export default class RecyclerGridView extends React.PureComponent<
     // }
 
     private _configureLayoutSources() {
-        for (let layoutSource of this.layoutSources) {
-            layoutSource.configure(this);
+        let {
+            zIndexStart = kDefaultProps.zIndexStart,
+            zIndexStride = kDefaultProps.zIndexStride,
+        } = this.props;
+
+        for (let i = 0; i < this.layoutSources.length; i++) {
+            let layoutSource = this.layoutSources[i];
+            layoutSource.configure(this, {
+                zIndex: zIndexStart + i * zIndexStride,
+            });
         }
     }
 
