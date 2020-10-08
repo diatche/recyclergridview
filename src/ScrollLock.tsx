@@ -21,7 +21,7 @@ export interface ScrollLockProps {
  * This has the added benefit of disabling iOS Safari window bounce
  * during panning.
  */
-const ScrollLock = ({ locked: lockedValue }: ScrollLockProps) => {
+const ScrollLock = React.memo(({ locked: lockedValue }: ScrollLockProps) => {
     const [RemoveScroll, setRemoveScroll] = React.useState<any>(null);
     const [locked, setLocked] = React.useState(false);
     
@@ -50,6 +50,6 @@ const ScrollLock = ({ locked: lockedValue }: ScrollLockProps) => {
     return (RemoveScroll ?
         <RemoveScroll enabled={locked} children={[]} />
     : null);
-};
+});
 
 export default ScrollLock;
