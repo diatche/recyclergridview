@@ -1,3 +1,4 @@
+import React from 'react';
 import {
     Animated,
     GestureResponderEvent,
@@ -80,3 +81,34 @@ export function removeDefaultCurry<T>(
         return cb(e, gestureState);
     };
 };
+
+// export const useImport = (
+//     packageName: string,
+//     options?: {
+//         fallback?: any;
+//         optional?: boolean;
+//     }): any => {
+//     const [packageRoot, setPackageRoot] = React.useState<any>(options?.fallback);
+//     const currentPackageNameRef = React.useRef('');
+
+//     React.useEffect(() => {
+//         currentPackageNameRef.current = packageName;
+//         (async (packageName: string) => {
+//             let packageRoot: any;
+//             try {
+//                 packageRoot = await import(packageName);
+//             } catch (error) {
+//                 if (!options?.optional) {
+//                     throw error;
+//                 }
+//             }
+//             if (packageName !== currentPackageNameRef.current) {
+//                 // Another package was chosen
+//                 return;
+//             }
+//             setPackageRoot(packageRoot);
+//         })(packageName);
+//     }, [packageName]);
+
+//     return packageRoot;
+// };

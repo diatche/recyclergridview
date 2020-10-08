@@ -1,5 +1,13 @@
 import React from "react";
-import { Animated } from 'react-native';
+import { Animated, Platform } from 'react-native';
+
+const RemoveScroll$ = Platform.OS === 'web'
+    ? import('react-remove-scroll')
+        .catch(error => {
+            console.info('Scroll locking is not possible, because "react-remove-scroll" could not be loaded: ' + error.message);
+            return {};
+        })
+    : Promise.resolve({});
 
 export interface ScrollLockProps {
     locked: Animated.Value;
@@ -13,6 +21,35 @@ export interface ScrollLockProps {
  * This has the added benefit of disabling iOS Safari window bounce
  * during panning.
  */
-const ScrollLock = ({ locked: lockedValue }: ScrollLockProps) => null;
+const ScrollLock = ({ locked: lockedValue }: ScrollLockProps) => {
+    const [RemoveScroll, setRemoveScroll] = React.useState<any>(null);
+    const [locked, setLocked] = React.useState(false);
+    
+    React.useEffect(() => {
+        RemoveScroll$.then((res: any) => setRemoveScroll(res?.RemoveScroll || null));
+    }, []);
+
+    React.useEffect(() => {
+        let handle = '';
+        if (RemoveScroll) {
+            handle = lockedValue.addListener(({ value }) => {
+                let x = !!value;
+                if (x === locked) {
+                    return;
+                }
+                setLocked(x);
+            });
+        }
+        return () => {
+            if (handle) {
+                lockedValue.removeListener(handle);
+            };
+        }
+    }, [lockedValue, RemoveScroll]);
+
+    return (RemoveScroll ?
+        <RemoveScroll enabled={locked} children={[]} />
+    : null);
+};
 
 export default ScrollLock;
