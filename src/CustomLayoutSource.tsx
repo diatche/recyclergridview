@@ -15,7 +15,7 @@ import {
 } from "./util";
 
 export interface CustomLayoutSourceProps extends LayoutSourceProps<number> {
-    getItemLayout(index: number): IItemLayout;
+    getItemLayout(index: number): Pick<IItemLayout, 'offset'> & Partial<IItemLayout>;
     getVisibleIndexSet(
         visibleRange: [IPoint, IPoint],
         layoutSource: CustomLayoutSource,
@@ -35,7 +35,11 @@ export default class CustomLayoutSource extends LayoutSource<number, CustomLayou
     }
 
     getItemContentLayout(index: number): IItemLayout {
-        return this.props.getItemLayout(index);
+        return {
+            size: this.itemSize,
+            zIndex: this.zIndex,
+            ...this.props.getItemLayout(index)
+        };
     }
 
     getVisibleItem(index: number): IItem | undefined {
@@ -113,7 +117,7 @@ export default class CustomLayoutSource extends LayoutSource<number, CustomLayou
 
     getVisibleIndexSet(view: Grid): Set<number> {
         return this.props.getVisibleIndexSet(
-            this.getVisiblePointRange(view),
+            this.getVisibleLocationRange(view),
             this,
             view
         );

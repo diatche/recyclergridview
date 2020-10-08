@@ -33,6 +33,7 @@ const kDefaultProps: Partial<LayoutSourceProps<any>> = {
 let _layoutSourceCounter = 0;
 
 export interface LayoutSourceProps<T> {
+    itemSize?: AnimatedValueXYDerivedInput<Grid>;
     origin?: AnimatedValueXYDerivedInput<Grid>;
     scale?: AnimatedValueXYDerivedInput<Grid>;
     insets?: Partial<IInsets<AnimatedValueDerivedInput<Grid>>>;
@@ -84,10 +85,12 @@ export default class LayoutSource<
 > {
     props: Props;
     readonly id: string;
+    itemSize$: Animated.ValueXY;
     origin$: Animated.ValueXY;
     scale$: Animated.ValueXY;
     insets$: IInsets<Animated.Value>;
 
+    private _itemSize: IPoint;
     private _origin: IPoint;
     private _scale: IPoint;
     private _insets: IInsets<number>;
@@ -105,6 +108,9 @@ export default class LayoutSource<
         this.id = String(++_layoutSourceCounter);
         this._itemQueues = {};
 
+        this.itemSize$ = new Animated.ValueXY();
+        this._itemSize = { x: 1, y: 1 };
+
         this.origin$ = new Animated.ValueXY();
         this._origin = zeroPoint();
 
@@ -118,6 +124,10 @@ export default class LayoutSource<
             left: new Animated.Value(0),
         };
         this._insets = { ...kZeroInsets };
+    }
+
+    get itemSize(): IPoint {
+        return { ...this._itemSize };
     }
 
     get origin(): IPoint {
@@ -136,6 +146,20 @@ export default class LayoutSource<
         this.unconfigure();
 
         let needsForcedUpdate = false;
+        let sub = '';
+
+        this.itemSize$ = normalizeAnimatedValueXY(this.props.itemSize, view);
+        this._itemSize = {
+            // @ts-ignore: _value is private
+            x: this.itemSize$.x._value || 0,
+            // @ts-ignore: _value is private
+            y: this.itemSize$.y._value || 0,
+        };
+        sub = this.itemSize$.addListener(p => {
+            this._itemSize = p;
+            this.setNeedsUpdate(view);
+        });
+        this._animatedSubscriptions[sub] = this.itemSize$;
 
         this.origin$ = normalizeAnimatedValueXY(this.props.origin, view);
         this._origin = {
@@ -144,7 +168,7 @@ export default class LayoutSource<
             // @ts-ignore: _value is private
             y: this.origin$.y._value || 0,
         };
-        let sub = this.origin$.addListener(p => {
+        sub = this.origin$.addListener(p => {
             this._origin = p;
             this.setNeedsUpdate(view);
         });
@@ -290,7 +314,7 @@ export default class LayoutSource<
         this._updating = false;
     }
 
-    getVisiblePointRange(view: Grid): [IPoint, IPoint] {
+    getVisibleLocationRange(view: Grid): [IPoint, IPoint] {
         let { x: width, y: height } = this.getViewportSize(view);
         if (width < 1 || height < 1) {
             return [zeroPoint(), zeroPoint()];
@@ -321,6 +345,24 @@ export default class LayoutSource<
             return [zeroPoint(), zeroPoint()];
         }
         return [start, end];
+    }
+
+    getVisibleGridIndexRange(
+        view: Grid,
+        options?: {
+            partial?: boolean
+        }
+    ): [IPoint, IPoint] {
+        let range = this.getVisibleLocationRange(view);
+        range[0] = this.getGridIndex(range[0], view);
+        range[1] = this.getGridIndex(range[1], view);
+        if (!options?.partial) {
+            range[0].x = Math.floor(range[0].x);
+            range[0].y = Math.floor(range[0].y);
+            range[1].x = Math.ceil(range[1].x);
+            range[1].y = Math.ceil(range[1].y);
+        }
+        return range;
     }
 
     getStickyContainerLocation(view: Grid): Partial<IPoint> {
@@ -485,10 +527,41 @@ export default class LayoutSource<
      */
     getLocation(point: IPoint, view: Grid): IPoint {
         let { x, y } = view.getLocation(point);
+        let offset = this.getLocationInsetOffset(view);
+        return {
+            x: x - this._origin.x + offset.x,
+            y: y - this._origin.y + offset.y,
+        };
+    }
+
+    /**
+     * Returns the amount to offset a location
+     * when converting from view to content
+     * coordinates.
+     */
+    getLocationInsetOffset(view: Grid): IPoint {
         let scale = this.getScale(view);
         return {
-            x: x - this._origin.x + Math.max(this._insets.left / scale.x, -this._insets.right / scale.x),
-            y: y - this._origin.y + Math.max(this._insets.top / scale.y, -this._insets.bottom / scale.y),
+            x: Math.max(this._insets.left / scale.x, -this._insets.right / scale.x),
+            y: Math.max(this._insets.top / scale.y, -this._insets.bottom / scale.y),
+        };
+    }
+
+    /**
+     * Transforms a point in content coordinates
+     * to an index of a grid of size `itemSize`.
+     * @param point 
+     */
+    getGridIndex(point: IPoint, view: Grid): IPoint {
+        let { itemSize } = this;
+        // return {
+        //     x: point.x / itemSize.x,
+        //     y: point.y / itemSize.y,
+        // };
+        let offset = this.getLocationInsetOffset(view);
+        return {
+            x: (point.x - offset.x) / itemSize.x,
+            y: (point.y - offset.y) / itemSize.y,
         };
     }
 
