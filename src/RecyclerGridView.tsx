@@ -71,16 +71,7 @@ export interface RecyclerCollectionViewProps extends ViewProps {
     horizontalScrollEnabled?: boolean;
     snapToLocation?: (info: IScrollInfo) => Partial<IPoint> | undefined;
     onViewportSizeChanged?: (collection: RecyclerGridView) => void;
-    /**
-     * When `true`, enables performing animations on native side
-     * without going through the javascript bridge on every frame.
-     * Falls back to javascript animation when not supported.
-     * See [React Native Documentation](https://reactnative.dev/docs/animated#using-the-native-driver)
-     * for more info.
-     * 
-     * Defaults to `true`.
-     **/
-    useNativeDriver?: boolean;
+    clock?: Animated.Clock;
 }
 
 interface RecyclerCollectionViewState {
@@ -95,6 +86,7 @@ export default class RecyclerGridView extends React.PureComponent<
     RecyclerCollectionViewProps,
     RecyclerCollectionViewState
 > {
+    readonly clock: Animated.Clock;
     readonly layoutSources: LayoutSource<any>[];
     readonly viewOffset$: Animated.ValueXY;
     /** Animated container size including axes. */
@@ -130,15 +122,11 @@ export default class RecyclerGridView extends React.PureComponent<
     private _memoryWarningListener?: () => void;
     private _scrollLocked$ = new Animated.Value<number>(0);
     private _scrollLocked = false;
-    private _useNativeDriver: boolean;
 
     constructor(props: RecyclerCollectionViewProps) {
         super(props);
-        this._useNativeDriver = props.useNativeDriver || kDefaultProps.useNativeDriver;
-        if (this._useNativeDriver) {
-            throw new Error('Using native driver is not supported due to limitations with animating layout props.');
-        }
 
+        this.clock = props.clock || new Animated.Clock();
         this.layoutSources =[ ...props.layoutSources ];
 
         this._containerSize = zeroPoint();
@@ -246,13 +234,7 @@ export default class RecyclerGridView extends React.PureComponent<
                 onMoveShouldSetPanResponder: lockTruthFactory(),
                 onMoveShouldSetPanResponderCapture: lockTruthFactory(),
                 onPanResponderStart: removeDefaultCurry(() => this._onBeginPan()),
-                onPanResponderMove: removeDefaultCurry(Animated.event(
-                    [null, panGestureState],
-                    {
-                        // listener: event => {},
-                        useNativeDriver: this._useNativeDriver
-                    }
-                )),
+                onPanResponderMove: removeDefaultCurry(Animated.event([null, panGestureState])),
                 onPanResponderEnd: removeDefaultCurry(() => this._onEndPan()),
             });
         }
@@ -401,10 +383,7 @@ export default class RecyclerGridView extends React.PureComponent<
                 // Decay velocity
                 this._descelerationAnimation = Animated.decay(
                     this.viewOffset$, // Auto-multiplexed
-                    {
-                        velocity: panVelocity,
-                        useNativeDriver: this._useNativeDriver,
-                    }
+                    { velocity: panVelocity }
                 );
                 this._descelerationAnimation.start(info => this._onEndDeceleration(info));
             } else {
@@ -729,7 +708,6 @@ export default class RecyclerGridView extends React.PureComponent<
                 velocity: options.velocity || this.contentVelocity,
                 bounciness: 0,
                 // friction: 4,
-                useNativeDriver: this._useNativeDriver,
                 ...options,
             }
         );
@@ -771,20 +749,6 @@ export default class RecyclerGridView extends React.PureComponent<
                         overflow: "hidden",
                     },
                 ]}
-                // onLayout={Animated.event(
-                //     [{
-                //         nativeEvent: {
-                //             layout: {
-                //                 width: this.containerSize$.x,
-                //                 height: this.containerSize$.y,
-                //             }
-                //         }
-                //     }],
-                //     {
-                //         // listener: event => {},
-                //         useNativeDriver: this._useNativeDriver
-                //     }
-                // )}
                 onLayout={(event: any) => {
                     Animated.event(
                         [{
@@ -794,11 +758,7 @@ export default class RecyclerGridView extends React.PureComponent<
                                     height: this.containerSize$.y,
                                 }
                             }
-                        }],
-                        {
-                            // listener: event => {},
-                            useNativeDriver: this._useNativeDriver
-                        }
+                        }]
                     )(event);
                     this.props.onLayout?.(event);
                 }}
@@ -859,7 +819,6 @@ export default class RecyclerGridView extends React.PureComponent<
                 item={item}
                 layoutSource={layoutSource}
                 renderItem={() => this.props.renderItem(item, layoutSource, this)}
-                useNativeDriver={this._useNativeDriver}
             />
         );
     }

@@ -70,6 +70,7 @@ export default class LayoutSource<
     Props extends LayoutSourceProps<T> = LayoutSourceProps<T>
 > {
     props: Props;
+    clock = new Animated.Clock();
     readonly id: string;
     origin$: Animated.ValueXY;
     scale$: Animated.ValueXY;
@@ -118,6 +119,8 @@ export default class LayoutSource<
         this.unconfigure();
 
         let needsForcedUpdate = false;
+
+        this.clock = view.clock;
 
         this.origin$ = normalizeAnimatedValueXY(this.props.origin, view);
         this._origin = {

@@ -8,7 +8,6 @@ export interface ItemViewProps {
     item: IItem;
     layoutSource: LayoutSource;
     renderItem: () => React.ReactNode;
-    useNativeDriver: boolean;
 }
 
 const ItemView = React.memo(({
@@ -16,7 +15,6 @@ const ItemView = React.memo(({
     item,
     layoutSource,
     renderItem,
-    useNativeDriver,
 }: ItemViewProps) => {
     const [renderNonce, setRenderNonce] = React.useState(0);
     
@@ -25,11 +23,15 @@ const ItemView = React.memo(({
         if (showDuration > 0) {
             // Animate opacity to reduce jarring effect
             // after render.
-            Animated.timing(item.animated.opacity, {
-                toValue: 1,
-                duration: layoutSource.props.showDuration,
-                useNativeDriver,
-            }).start();
+            Animated.timing(
+                layoutSource.clock,
+                { position: item.animated.opacity },
+                {
+                    toValue: 1,
+                    durationMs: layoutSource.props.showDuration,
+                    easing: 
+                }
+            ).start();
         } // Else, no duration: opacity set in item update
 
         let handle = item.animated.renderNonce.addListener(({ value }) => (
