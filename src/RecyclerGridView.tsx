@@ -176,9 +176,7 @@ export default class RecyclerGridView extends React.PureComponent<
         });
         this._animatedSubscriptions[sub] = this.containerSize$;
 
-        // Set scale to zero to prevent rendering a lot
-        // of items on the first render.
-        this.scale$ = normalizeAnimatedValueXY(props.scale, this, this.containerSize$);
+        this.scale$ = normalizeAnimatedValueXY(props.scale, this, { x: 1, y: 1});
         this._scale = {
             // @ts-ignore: _value is private
             x: this.scale$.x._value || 0,

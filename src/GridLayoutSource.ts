@@ -19,7 +19,7 @@ export interface GridLayoutSourceProps extends LayoutSourceProps<IPoint> {
     
 }
 
-export default class GridLayoutSource extends LayoutSource<IPoint> {
+export default class GridLayoutSource extends LayoutSource<IPoint, GridLayoutSourceProps> {
     visibleItems: { [xy: string]: IItem };
     visibleRange: [IPoint, IPoint];
     pendingVisibleRange?: [IPoint, IPoint];
@@ -31,9 +31,14 @@ export default class GridLayoutSource extends LayoutSource<IPoint> {
     }
 
     getItemContentLayout(index: IPoint): IItemLayout {
+        let { itemSize: size, zIndex } = this;
         return {
-            offset: index,
-            size: { x: 1, y: 1 },
+            offset: {
+                x: index.x * size.x,
+                y: index.y * size.y,
+            },
+            size,
+            zIndex,
         };
     }
 
@@ -88,7 +93,7 @@ export default class GridLayoutSource extends LayoutSource<IPoint> {
     }
 
     shouldUpdate(view: Grid) {
-        let pendingVisibleRange = this.getVisibleRange(view);
+        let pendingVisibleRange = this.getVisibleGridIndexRange(view);
         return !isPointRangeEqual(
             pendingVisibleRange,
             this.visibleRange
@@ -97,7 +102,7 @@ export default class GridLayoutSource extends LayoutSource<IPoint> {
 
     beginUpdate(view: Grid) {
         super.beginUpdate(view);
-        this.pendingVisibleRange = this.getVisibleRange(view);
+        this.pendingVisibleRange = this.getVisibleGridIndexRange(view);
         // console.debug(`[${this.id}] visible items: ${Object.keys(this.visibleItems).length} (ok: ${Object.values(this.visibleItems).filter(item => !!(item as any).ref?.current).length})`);
         // console.debug(`[${this.id}] currentVisibleRange: ` + JSON.stringify(this.visibleRange));
         // console.debug(`[${this.id}] pendingVisibleRange: ` + JSON.stringify(this.pendingVisibleRange));
@@ -114,14 +119,5 @@ export default class GridLayoutSource extends LayoutSource<IPoint> {
     endUpdate(view: Grid) {
         this.pendingVisibleRange = undefined;
         super.endUpdate(view);
-    }
-
-    getVisibleRange(view: Grid): [IPoint, IPoint] {
-        let [start, end] = this.getVisiblePointRange(view);
-        start.x = Math.floor(start.x);
-        start.y = Math.floor(start.y);
-        end.x = Math.ceil(end.x);
-        end.y = Math.ceil(end.y);
-        return [start, end];
     }
 }

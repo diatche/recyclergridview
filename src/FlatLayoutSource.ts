@@ -20,7 +20,7 @@ export interface UniformLayoutSourceProps extends LayoutSourceProps<number> {
     horizontal?: boolean;
 }
 
-export default class FlatLayoutSource extends LayoutSource<number> {
+export default class FlatLayoutSource extends LayoutSource<number, UniformLayoutSourceProps> {
     horizontal: boolean;
     visibleItems: { [i: number]: IItem };
     visibleRange: [number, number];
@@ -35,11 +35,10 @@ export default class FlatLayoutSource extends LayoutSource<number> {
 
     getItemContentLayout(index: number): IItemLayout {
         let offset = zeroPoint();
-        offset[horizontalBooleanToAxis(this.horizontal)] = index;
-        return {
-            offset: offset,
-            size: { x: 1, y: 1 },
-        };
+        let { itemSize: size, zIndex } = this;
+        let axis = horizontalBooleanToAxis(this.horizontal);
+        offset[axis] = index * size[axis];
+        return { offset, size, zIndex };
     }
 
     getVisibleItem(index: number): IItem | undefined {
@@ -115,10 +114,8 @@ export default class FlatLayoutSource extends LayoutSource<number> {
     }
 
     getVisibleRange(view: Grid): [number, number] {
-        let [startPoint, endPoint] = this.getVisiblePointRange(view);
+        let [startPoint, endPoint] = this.getVisibleGridIndexRange(view);
         let axis = horizontalBooleanToAxis(this.horizontal);
-        let start = Math.floor(startPoint[axis]);
-        let end = Math.ceil(endPoint[axis]);
-        return [start, end];
+        return [startPoint[axis], endPoint[axis]];
     }
 }
