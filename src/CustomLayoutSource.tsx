@@ -14,19 +14,21 @@ import {
     isSetEqual,
 } from "./util";
 
-export interface CustomLayoutSourceProps extends LayoutSourceProps<number> {
-    getItemLayout(index: number): Pick<IItemLayout, 'offset'> & Partial<IItemLayout>;
+declare type T = number;
+
+export interface CustomLayoutSourceProps extends LayoutSourceProps<T> {
+    getItemLayout(index: T): Pick<IItemLayout, 'offset'> & Partial<IItemLayout>;
     getVisibleIndexSet(
         visibleRange: [IPoint, IPoint],
         layoutSource: CustomLayoutSource,
         view: Grid,
-    ): Set<number>;
+    ): Set<T>;
 }
 
-export default class CustomLayoutSource extends LayoutSource<number, CustomLayoutSourceProps> {
-    visibleItems: { [i: number]: IItem };
-    visibleIndexSet: Set<number>;
-    pendingVisibleIndexSet?: Set<number>;
+export default class CustomLayoutSource extends LayoutSource<T, CustomLayoutSourceProps> {
+    visibleItems: { [i: number]: IItem<T> };
+    visibleIndexSet: Set<T>;
+    pendingVisibleIndexSet?: Set<T>;
 
     constructor(props: CustomLayoutSourceProps) {
         super(props);
@@ -34,19 +36,18 @@ export default class CustomLayoutSource extends LayoutSource<number, CustomLayou
         this.visibleIndexSet = new Set();
     }
 
-    getItemContentLayout(index: number): IItemLayout {
+    getItemContentLayout(index: T): IItemLayout {
         return {
             size: this.itemSize,
-            zIndex: this.zIndex,
             ...this.props.getItemLayout(index)
         };
     }
 
-    getVisibleItem(index: number): IItem | undefined {
+    getVisibleItem(index: T): IItem<T> | undefined {
        return this.visibleItems[index];
     }
 
-    setVisibleItem(index: number, item: IItem | undefined) {
+    setVisibleItem(index: T, item: IItem<T> | undefined) {
         if (item) {
             this.visibleItems[index] = item;
         } else {
@@ -54,7 +55,7 @@ export default class CustomLayoutSource extends LayoutSource<number, CustomLayou
         }
     }
 
-    * itemUpdates(): Generator<IItemUpdate<number>> {
+    * itemUpdates(): Generator<IItemUpdate<T>> {
         let pendingVisibleIndexSet = this.pendingVisibleIndexSet;
         if (!pendingVisibleIndexSet) {
             return;
@@ -78,7 +79,7 @@ export default class CustomLayoutSource extends LayoutSource<number, CustomLayou
         }
     }
 
-    * visibleIndexes(): Generator<number> {
+    * visibleIndexes(): Generator<T> {
         let indexSet = this.pendingVisibleIndexSet || this.visibleIndexSet;
         for (let i of indexSet) {
             yield i;
@@ -115,7 +116,7 @@ export default class CustomLayoutSource extends LayoutSource<number, CustomLayou
         super.endUpdate(view);
     }
 
-    getVisibleIndexSet(view: Grid): Set<number> {
+    getVisibleIndexSet(view: Grid): Set<T> {
         return this.props.getVisibleIndexSet(
             this.getVisibleLocationRange(view),
             this,

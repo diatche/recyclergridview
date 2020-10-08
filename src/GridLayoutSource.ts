@@ -15,42 +15,43 @@ import {
     isPointRangeEqual,
 } from "./util";
 
-export interface GridLayoutSourceProps extends LayoutSourceProps<IPoint> {
+declare type T = IPoint;
+
+export interface GridLayoutSourceProps extends LayoutSourceProps<T> {
     
 }
 
 export default class GridLayoutSource extends LayoutSource<IPoint, GridLayoutSourceProps> {
-    visibleItems: { [xy: string]: IItem };
-    visibleRange: [IPoint, IPoint];
-    pendingVisibleRange?: [IPoint, IPoint];
+    visibleItems: { [xy: string]: IItem<T> };
+    visibleRange: [T, T];
+    pendingVisibleRange?: [T, T];
 
-    constructor(props: GridLayoutSourceProps = {}) {
+    constructor(props: GridLayoutSourceProps) {
         super(props);
         this.visibleItems = {};
         this.visibleRange = emptyPointRange();
     }
 
-    getItemContentLayout(index: IPoint): IItemLayout {
-        let { itemSize: size, zIndex } = this;
+    getItemContentLayout(index: T): IItemLayout {
+        let { itemSize: size } = this;
         return {
             offset: {
                 x: index.x * size.x,
                 y: index.y * size.y,
             },
             size,
-            zIndex,
         };
     }
 
-    encodeIndex(index: IPoint): string {
+    encodeIndex(index: T): string {
         return `${index.x},${index.y}`;
     }
 
-    getVisibleItem(index: IPoint): IItem | undefined {
+    getVisibleItem(index: T): IItem<T> | undefined {
        return this.visibleItems[this.encodeIndex(index)];
     }
 
-    setVisibleItem(index: IPoint, item: IItem | undefined) {
+    setVisibleItem(index: T, item: IItem<T> | undefined) {
         let i = this.encodeIndex(index);
         if (item) {
             this.visibleItems[i] = item;
@@ -59,7 +60,7 @@ export default class GridLayoutSource extends LayoutSource<IPoint, GridLayoutSou
         }
     }
 
-    * itemUpdates(): Generator<IItemUpdate<IPoint>> {
+    * itemUpdates(): Generator<IItemUpdate<T>> {
         let pendingVisibleRange = this.pendingVisibleRange;
         if (!pendingVisibleRange) {
             return;
@@ -83,7 +84,7 @@ export default class GridLayoutSource extends LayoutSource<IPoint, GridLayoutSou
         }
     }
 
-    * visibleIndexes(): Generator<IPoint> {
+    * visibleIndexes(): Generator<T> {
         let [p0, pN] = this.pendingVisibleRange || this.visibleRange;
         for (let x = p0.x; x < pN.x; x++) {
             for (let y = p0.y; y < pN.y; y++) {

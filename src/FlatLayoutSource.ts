@@ -16,36 +16,38 @@ import {
     zeroPoint,
 } from "./util";
 
-export interface UniformLayoutSourceProps extends LayoutSourceProps<number> {
+declare type T = number;
+
+export interface UniformLayoutSourceProps extends LayoutSourceProps<T> {
     horizontal?: boolean;
 }
 
-export default class FlatLayoutSource extends LayoutSource<number, UniformLayoutSourceProps> {
+export default class FlatLayoutSource extends LayoutSource<T, UniformLayoutSourceProps> {
     horizontal: boolean;
-    visibleItems: { [i: number]: IItem };
-    visibleRange: [number, number];
-    pendingVisibleRange?: [number, number];
+    visibleItems: { [i: number]: IItem<T> };
+    visibleRange: [T, T];
+    pendingVisibleRange?: [T, T];
 
-    constructor(props: UniformLayoutSourceProps = {}) {
+    constructor(props: UniformLayoutSourceProps) {
         super(props);
         this.horizontal = !!props.horizontal;
         this.visibleItems = {};
         this.visibleRange = emptyRange();
     }
 
-    getItemContentLayout(index: number): IItemLayout {
+    getItemContentLayout(index: T): IItemLayout {
         let offset = zeroPoint();
-        let { itemSize: size, zIndex } = this;
+        let { itemSize: size } = this;
         let axis = horizontalBooleanToAxis(this.horizontal);
         offset[axis] = index * size[axis];
-        return { offset, size, zIndex };
+        return { offset, size };
     }
 
-    getVisibleItem(index: number): IItem | undefined {
+    getVisibleItem(index: T): IItem<T> | undefined {
        return this.visibleItems[index];
     }
 
-    setVisibleItem(index: number, item: IItem | undefined) {
+    setVisibleItem(index: T, item: IItem<T> | undefined) {
         if (item) {
             this.visibleItems[index] = item;
         } else {
@@ -53,7 +55,7 @@ export default class FlatLayoutSource extends LayoutSource<number, UniformLayout
         }
     }
 
-    * itemUpdates(): Generator<IItemUpdate<number>> {
+    * itemUpdates(): Generator<IItemUpdate<T>> {
         let pendingVisibleRange = this.pendingVisibleRange;
         if (!pendingVisibleRange) {
             return;
@@ -77,7 +79,7 @@ export default class FlatLayoutSource extends LayoutSource<number, UniformLayout
         }
     }
 
-    * visibleIndexes(): Generator<number> {
+    * visibleIndexes(): Generator<T> {
         let [i0, iN] = this.pendingVisibleRange || this.visibleRange;
         for (let i = i0; i < iN; i++) {
             yield i;
@@ -113,7 +115,7 @@ export default class FlatLayoutSource extends LayoutSource<number, UniformLayout
         super.endUpdate(view);
     }
 
-    getVisibleRange(view: Grid): [number, number] {
+    getVisibleRange(view: Grid): [T, T] {
         let [startPoint, endPoint] = this.getVisibleGridIndexRange(view);
         let axis = horizontalBooleanToAxis(this.horizontal);
         return [startPoint[axis], endPoint[axis]];

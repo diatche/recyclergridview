@@ -73,7 +73,20 @@ export interface LayoutSourceProps<T> {
      * This method is called only when an item is reused,
      * not when it is created.
      **/
-    shouldRenderItem: (data: { item: IItem, index: T }) => boolean;
+    shouldRenderItem: (data: {
+        item: IItem<T>;
+        previous: Pick<IItem<T>, 'index' | 'contentLayout'>;
+    }) => boolean;
+    /**
+     * Called before an item is displayed after
+     * an update or creation.
+     */
+    willShowItem?: (item: IItem<T>) => void;
+    /**
+     * Called before an item is hidden after
+     * moving out of visible bounds.
+     */
+    willHideItem?: (item: IItem<T>) => void;
     /**
      * The duration in milliseconds of the fade-in animation,
      * when a new item is rendered. Ignored when an item is
@@ -103,7 +116,7 @@ export default class LayoutSource<
     private _insets: IInsets<number>;
     private _zIndex = 0;
 
-    private _itemQueues: { [reuseID: string]: IItem[] };
+    private _itemQueues: { [reuseID: string]: IItem<T>[] };
     private _animatedSubscriptions: { [id: string]: Animated.Value | Animated.ValueXY } = {};
     private _updating = false;
 
@@ -240,6 +253,12 @@ export default class LayoutSource<
     reset() {
         this.clearQueue();
         for (let index of this.visibleIndexes()) {
+            if (this.props.willHideItem) {
+                let item = this.getVisibleItem(index);
+                if (item) {
+                    this.props.willHideItem(item);
+                }
+            }
             this.setVisibleItem(index, undefined);
         }
     }
@@ -659,12 +678,13 @@ export default class LayoutSource<
         let contentLayout = this.createItemContentLayout$();
         let viewLayout = this.createItemViewLayout$(contentLayout, view);
         
-        let item: IItem = {
+        let item: IItem<T> = {
+            index,
             ref: view.createItemViewRef(),
+            zIndex: this.zIndex,
             contentLayout: {
                 offset: zeroPoint(),
                 size: zeroPoint(),
-                zIndex: this.zIndex,
             },
             animated: {
                 contentLayout,
@@ -681,18 +701,19 @@ export default class LayoutSource<
     }
 
     updateItem(
-        item: IItem,
+        item: IItem<T>,
         index: T,
         options?: {
             isNew?: boolean;
         }
     ) {
+        let previousContentLayout = item.contentLayout;
         item.contentLayout = {
             ...item.contentLayout,
             ...this.getItemContentLayout(index),
         };
-        if (!item.contentLayout.zIndex) {
-            item.contentLayout.zIndex = this.zIndex;
+        if (!item.zIndex) {
+            item.zIndex = this.zIndex;
         }
         // console.debug(`[${this.id}] content layout ${JSON.stringify(index)}: ${JSON.stringify(item.contentLayout, null, 2)}`);
         let { offset, size } = item.contentLayout;
@@ -701,12 +722,20 @@ export default class LayoutSource<
             size: size$,
         } = item.animated.contentLayout;
         if (offset) {
-            offset$.x.setValue(offset.x);
-            offset$.y.setValue(offset.y);
+            if (offset.x !== previousContentLayout.offset.x) {
+                offset$.x.setValue(offset.x);
+            }
+            if (offset.y !== previousContentLayout.offset.y) {
+                offset$.y.setValue(offset.y);
+            }
         }
         if (size) {
-            size$.x.setValue(size.x);
-            size$.y.setValue(size.y);
+            if (size.x !== previousContentLayout.size.x) {
+                size$.x.setValue(size.x);
+            }
+            if (size.y !== previousContentLayout.size.y) {
+                size$.y.setValue(size.y);
+            }
         }
 
         // Determine when to show item:
@@ -721,18 +750,19 @@ export default class LayoutSource<
         if (showNow) {
             item.animated.opacity.setValue(1);
         }
+        this.props.willShowItem?.(item);
         this.setVisibleItem(index, item);
     }
 
-    getVisibleItem(index: T): IItem | undefined {
+    getVisibleItem(index: T): IItem<T> | undefined {
         throw new Error('Not implemented');
     }
 
-    setVisibleItem(index: T, item: IItem | undefined) {
+    setVisibleItem(index: T, item: IItem<T> | undefined) {
         throw new Error('Not implemented');
     }
 
-    private _dequeueItem(reuseID: string): IItem | undefined {
+    private _dequeueItem(reuseID: string): IItem<T> | undefined {
         let queue = getLazyArray(this._itemQueues, reuseID);
         let item = queue.pop();
         if (item && item.reuseID !== reuseID) {
@@ -752,6 +782,7 @@ export default class LayoutSource<
             // console.debug(`[${this.id}] queue ${JSON.stringify(index)} failed`);
             return false;
         }
+        this.props.willHideItem?.(item);
         this.setVisibleItem(index, undefined);
         item.animated.opacity.setValue(0);
         if (item.reuseID) {
@@ -825,12 +856,16 @@ export default class LayoutSource<
         }
     }
 
-    dequeueItem(index: T): IItem | undefined {
+    dequeueItem(index: T): IItem<T> | undefined {
         let reuseID = this.getReuseID(index);
         let item = this._dequeueItem(reuseID);
         if (item) {
+            let previous = {
+                index: item.index,
+                contentLayout: { ...item.contentLayout },
+            };
             this.updateItem(item, index);
-            if (!this.props.shouldRenderItem || this.props.shouldRenderItem({ item, index })) {
+            if (this.props.shouldRenderItem({ item, previous })) {
                 // TODO: Do not update nonce immediately, wait for commit.
                 // This will avoid an extra item render if a container render is needed.
                 item.animated.renderNonce.setValue(new Date().valueOf());

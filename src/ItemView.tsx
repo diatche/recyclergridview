@@ -5,7 +5,7 @@ import { IItem } from './types';
 
 export interface ItemViewProps {
     id: string;
-    item: IItem;
+    item: IItem<any>;
     layoutSource: LayoutSource;
     renderItem: () => React.ReactNode;
     useNativeDriver: boolean;
@@ -53,7 +53,7 @@ const ItemView = React.memo(({
                     width: item.animated.viewLayout.size.x,
                     height: item.animated.viewLayout.size.y,
                     opacity: item.animated.opacity,
-                    zIndex: item.contentLayout.zIndex || 0,
+                    zIndex: item.zIndex || 0,
                 },
             ]}
         >

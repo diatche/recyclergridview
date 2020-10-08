@@ -52,7 +52,7 @@ export interface IScrollBaseOptions extends Omit<Animated.SpringAnimationConfig,
 }
 
 export interface RecyclerCollectionViewProps extends ViewProps {
-    renderItem: (item: IItem, layoutSource: LayoutSource<any>, view: RecyclerGridView) => React.ReactNode;
+    renderItem: (item: IItem<any>, layoutSource: LayoutSource<any>, view: RecyclerGridView) => React.ReactNode;
     scrollLock?: boolean;
     layoutSources: LayoutSource<any>[];
     location?: AnimatedValueXYDerivedInput<RecyclerGridView>;
@@ -876,7 +876,7 @@ export default class RecyclerGridView extends React.PureComponent<
         return items;
     }
 
-    private _renderItem<T>(item: IItem, layoutSource: LayoutSource<T>): React.ReactNode {
+    private _renderItem<T>(item: IItem<T>, layoutSource: LayoutSource<T>): React.ReactNode {
         let viewID = String(++this._itemViewCounter);
         return (
             <ItemView

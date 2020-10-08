@@ -23,13 +23,6 @@ export interface ILayout<T> {
 export interface IItemLayout {
     offset: IPoint;
     size: IPoint;
-    /**
-     * Setting the z-index here will override
-     * the layout source's setting for this item.
-     * 
-     * See also [LayoutSourceProps]{@link LayoutSourceProps#zIndex}.
-     */
-    zIndex?: number;
 }
 
 export interface IAnimatedItemLayout {
@@ -68,11 +61,23 @@ export interface IItemUpdate<T> {
     remove?: T;
 }
 
-export interface IItem {
-    // id: number;
+/**
+ * The items metadata.
+ * You can modify these values in the
+ * [willShowItem]{@link LayoutSourceProps#willShowItem}
+ * callback.
+ */
+export interface IItem<T> {
+    index: T;
     reuseID?: string;
     ref: ViewRef;
-    // zIndex: number;
+    /**
+     * Setting the z-index here will override
+     * the layout source's setting for this item.
+     * 
+     * See also [LayoutSourceProps]{@link LayoutSourceProps#zIndex}.
+     */
+    zIndex?: number;
     contentLayout: IItemLayout;
     animated: IAnimatedItemLayout;
 }
