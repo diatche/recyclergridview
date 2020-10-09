@@ -162,6 +162,13 @@ export default class LayoutSource<
         return this.props.zIndex || this._zIndex;
     }
 
+    /**
+     * @see LayoutSourceProps.showDuration
+     */
+    get showDuration(): number {
+        return this.props.showDuration || 0;
+    }
+
     configure(view: Grid, options?: { zIndex?: number }) {
         this.unconfigure();
 
@@ -689,8 +696,8 @@ export default class LayoutSource<
             animated: {
                 contentLayout,
                 viewLayout,
-                opacity: new Animated.Value(0),
-                renderNonce: new Animated.Value(0),
+                // Start shown if no show animation given
+                opacity: new Animated.Value(this.showDuration <= 0 ? 1 : 0),
             },
         };
         item.reuseID = this.getReuseID(index);
@@ -739,17 +746,18 @@ export default class LayoutSource<
         }
 
         // Determine when to show item:
-        // Updated items are shown instantly
-        let showNow = !options?.isNew;
-        if (!showNow) {
+        if (options?.isNew) {
             // Animate opacity to reduce jarring effect
             // in ItemView render (if duration given).
-            let { showDuration = 0 } = this.props;
-            showNow = showDuration <= 0;
-        }
-        if (showNow) {
+            if (this.showDuration <= 0) {
+                // No duration given
+                item.animated.opacity.setValue(1);
+            }
+        } else {
+            // Updated items are always shown instantly
             item.animated.opacity.setValue(1);
         }
+
         this.props.willShowItem?.(item);
         this.setVisibleItem(index, item);
     }
@@ -776,14 +784,14 @@ export default class LayoutSource<
         return item;
     }
 
-    queueItem(index: T) {
+    queueItem(index: T): boolean {
         let item = this.getVisibleItem(index);
         if (!item) {
             // console.debug(`[${this.id}] queue ${JSON.stringify(index)} failed`);
             return false;
         }
-        this.props.willHideItem?.(item);
         this.setVisibleItem(index, undefined);
+        this.props.willHideItem?.(item);
         item.animated.opacity.setValue(0);
         if (item.reuseID) {
             let queue = getLazyArray(this._itemQueues, item.reuseID);
@@ -816,6 +824,7 @@ export default class LayoutSource<
             create = false,
             update = false,
         } = options || {};
+        let dequeueOptions = { prerender: create };
         // console.debug(`[${this.id}] ` + 'updateItems');
         this.beginUpdate(view);
         try {
@@ -827,7 +836,7 @@ export default class LayoutSource<
                 } else if (typeof add !== 'undefined') {
                     // Item shown
                     // console.debug(`[${this.id}] ` + 'show: ' + JSON.stringify(add));
-                    if (!dequeue || !this.dequeueItem(add)) {
+                    if (!dequeue || !this.dequeueItem(add, dequeueOptions)) {
                         if (create) {
                             this.createItem(add, view);
                         } else {
@@ -856,19 +865,32 @@ export default class LayoutSource<
         }
     }
 
-    dequeueItem(index: T): IItem<T> | undefined {
+    dequeueItem(
+        index: T,
+        options?: {
+            prerender?: boolean
+        }
+    ): IItem<T> | undefined {
         let reuseID = this.getReuseID(index);
         let item = this._dequeueItem(reuseID);
+        let itemNode = item?.ref.current;
+        if (item && !itemNode && !options?.prerender) {
+            // We have an existing item to reuse, but have neither a rendered react node
+            // nor we are about to render new nodes.
+            // !itemNode && console.debug(`Item ${JSON.stringify(item.index)} has no view node on dequeue`);
+            item = undefined;
+        }
         if (item) {
+            // We have an existing item to reuse with either a rendered react node
+            // or we are about to render new nodes.
             let previous = {
                 index: item.index,
                 contentLayout: { ...item.contentLayout },
             };
             this.updateItem(item, index);
-            if (this.props.shouldRenderItem({ item, previous })) {
-                // TODO: Do not update nonce immediately, wait for commit.
-                // This will avoid an extra item render if a container render is needed.
-                item.animated.renderNonce.setValue(new Date().valueOf());
+            if (itemNode && this.props.shouldRenderItem({ item, previous })) {
+                // Update existing rendered node
+                itemNode.setNeedsRender();
             }
         }
         return item;

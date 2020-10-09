@@ -835,8 +835,8 @@ export default class RecyclerGridView extends React.PureComponent<
         );
     }
 
-    createItemViewRef(): React.RefObject<any> {
-        return React.createRef();
+    createItemViewRef(): React.RefObject<ItemView> {
+        return React.createRef<ItemView>();
     }
 
     private _updateLayoutSources() {
@@ -859,7 +859,7 @@ export default class RecyclerGridView extends React.PureComponent<
         try {
             for (let index of layoutSource.visibleIndexes()) {
                 let item = layoutSource.getVisibleItem(index);
-                if (!item || !item.ref) {
+                if (!item) {
                     // We cannot dequeue a item as it would trigger a `findDOMNode` event inside `render()`.
                     console.warn('Creating item in render method. This should have been done in UNSAFE_componentWillUpdate().');
                     item = layoutSource.createItem(index, this);
@@ -877,11 +877,15 @@ export default class RecyclerGridView extends React.PureComponent<
     }
 
     private _renderItem<T>(item: IItem<T>, layoutSource: LayoutSource<T>): React.ReactNode {
-        let viewID = String(++this._itemViewCounter);
+        let viewKey = item.viewKey;
+        if (!viewKey) {
+            viewKey = String(++this._itemViewCounter);
+            item.viewKey = viewKey;
+        }
         return (
             <ItemView
-                key={viewID}
-                id={viewID}
+                ref={item.ref}
+                key={viewKey}
                 item={item}
                 layoutSource={layoutSource}
                 renderItem={() => this.props.renderItem(item, layoutSource, this)}

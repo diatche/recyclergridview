@@ -1,12 +1,11 @@
 import React from "react";
 import { View, Animated } from 'react-native';
+import { ItemView } from "./internal";
 
 export declare type AxisType = 'topAxis' | 'rightAxis' | 'bottomAxis' | 'leftAxis';
 export declare type Direction = 'horizontal' | 'vertical';
 
 export declare type AxisTypeMapping<T> = { [K in AxisType]: T };
-
-export declare type ViewRef = React.Ref<View>;
 
 export declare type AxisLabel = 'x' | 'y';
 
@@ -29,7 +28,6 @@ export interface IAnimatedItemLayout {
     contentLayout: ILayout<MutableAnimatedPoint>;
     viewLayout: ILayout<IAnimatedPoint>;
     opacity: Animated.Value;
-    renderNonce: Animated.Value;
 }
 
 export interface IAnimatedAxisLayout {
@@ -70,7 +68,8 @@ export interface IItemUpdate<T> {
 export interface IItem<T> {
     index: T;
     reuseID?: string;
-    ref: ViewRef;
+    ref: React.RefObject<ItemView>;
+    viewKey?: string;
     /**
      * Setting the z-index here will override
      * the layout source's setting for this item.
