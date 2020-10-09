@@ -162,6 +162,13 @@ export default class LayoutSource<
         return this.props.zIndex || this._zIndex;
     }
 
+    /**
+     * @see LayoutSourceProps.showDuration
+     */
+    get showDuration(): number {
+        return this.props.showDuration || 0;
+    }
+
     configure(view: Grid, options?: { zIndex?: number }) {
         this.unconfigure();
 
@@ -689,7 +696,8 @@ export default class LayoutSource<
             animated: {
                 contentLayout,
                 viewLayout,
-                opacity: new Animated.Value(0),
+                // Start shown if no show animation given
+                opacity: new Animated.Value(this.showDuration <= 0 ? 1 : 0),
             },
         };
         item.reuseID = this.getReuseID(index);
@@ -738,17 +746,18 @@ export default class LayoutSource<
         }
 
         // Determine when to show item:
-        // Updated items are shown instantly
-        let showNow = !options?.isNew;
-        if (!showNow) {
+        if (options?.isNew) {
             // Animate opacity to reduce jarring effect
             // in ItemView render (if duration given).
-            let { showDuration = 0 } = this.props;
-            showNow = showDuration <= 0;
-        }
-        if (showNow) {
+            if (this.showDuration <= 0) {
+                // No duration given
+                item.animated.opacity.setValue(1);
+            }
+        } else {
+            // Updated items are always shown instantly
             item.animated.opacity.setValue(1);
         }
+
         this.props.willShowItem?.(item);
         this.setVisibleItem(index, item);
     }
