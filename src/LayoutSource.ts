@@ -33,9 +33,24 @@ const kDefaultProps: Partial<LayoutSourceProps<any>> = {
 let _layoutSourceCounter = 0;
 
 export interface LayoutSourceProps<T> {
+    /**
+     * The default item size in content coordinates.
+     */
     itemSize?: AnimatedValueXYDerivedInput<Grid>;
     origin?: AnimatedValueXYDerivedInput<Grid>;
+    /**
+     * Set to `{ x: 1, y: 1 }` by default.
+     * 
+     * To add a parallax effect, set component
+     * values to larger or smaller than 1 to make
+     * the items appear closer and further away
+     * respectively.
+     */
     scale?: AnimatedValueXYDerivedInput<Grid>;
+    /**
+     * Specifies how much to inset the content grid
+     * in view coordinates (pixels).
+     */
     insets?: Partial<IInsets<AnimatedValueDerivedInput<Grid>>>;
     /**
      * The subviews "stick" to the specified edge.
@@ -554,7 +569,7 @@ export default class LayoutSource<
     }
 
     /**
-     * Transforms a point in view coordinates (offset)
+     * Transforms a point in view coordinates (pixels)
      * to a point in content coordinates.
      * @param point 
      */

@@ -35,13 +35,13 @@ const kDefaultProps = {
 };
 
 export interface IScrollInfo {
-    /** Content location (content coordinates). */
+    /** Content location in content coordinates. */
     location: IPoint,
-    /** Content velocity (content coordinates). */
+    /** Content velocity in content coordinates. */
     velocity: IPoint,
-    /** Viewport location (view coordinates). */
+    /** Viewport location in view coordinates (pixels). */
     offset: IPoint,
-    /** Viewport velocity (view coordinates). */
+    /** Viewport velocity in view coordinates (pixels). */
     scaledVelocity: IPoint,
 }
 
@@ -594,7 +594,7 @@ export default class RecyclerGridView extends React.PureComponent<
 
     /**
      * Transforms a vector in content coordinates
-     * to a vector in view coordinates (offset).
+     * to a vector in view coordinates (pixels).
      * @param point 
      */
     scaleVector(point: IPoint): IPoint {
@@ -605,7 +605,7 @@ export default class RecyclerGridView extends React.PureComponent<
     }
 
     /**
-     * Transforms a vector in view coordinates (offset)
+     * Transforms a vector in view coordinates (pixels)
      * to a vector in content coordinates.
      * @param point 
      */
@@ -712,7 +712,7 @@ export default class RecyclerGridView extends React.PureComponent<
     }
 
     /**
-     * Transforms a point in view coordinates (offset)
+     * Transforms a point in view coordinates (pixels)
      * to a point in content coordinates.
      * @param point 
      */
