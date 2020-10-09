@@ -602,6 +602,9 @@ export default class LayoutSource<
      */
     getGridIndex(point: IPoint, view: Grid): IPoint {
         let { itemSize } = this;
+        if (itemSize.x <= 0 || itemSize.y <= 0) {
+            return zeroPoint();
+        }
         // return {
         //     x: point.x / itemSize.x,
         //     y: point.y / itemSize.y,
@@ -730,9 +733,14 @@ export default class LayoutSource<
         }
     ) {
         let previousContentLayout = item.contentLayout;
+        let newContentLayout = this.getItemContentLayout(index);
+        if (newContentLayout.size.x <= 0 || newContentLayout.size.y <= 0) {
+            console.warn('Ignoring invalid item size');
+            newContentLayout.size = previousContentLayout.size;
+        }
         item.contentLayout = {
             ...item.contentLayout,
-            ...this.getItemContentLayout(index),
+            ...newContentLayout,
         };
         if (!item.zIndex) {
             item.zIndex = this.zIndex;

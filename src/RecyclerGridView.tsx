@@ -2,6 +2,7 @@ import React from "react";
 import {
     Animated,
     AppState,
+    GestureResponderEvent,
     PanResponder,
     PanResponderInstance,
     ViewProps,
@@ -67,10 +68,17 @@ export interface RecyclerCollectionViewProps extends ViewProps {
      **/
     anchor?: AnimatedValueXYDerivedInput<RecyclerGridView>;
     viewportInsets?: Partial<IInsets<AnimatedValueDerivedInput<RecyclerGridView>>>,
+    /**
+     * Modify the pan target.
+     * Defaults to [viewOffset]{@link RecyclerGridView#viewOffset}
+     */
+    panTarget?: Animated.ValueXY;
     /** Enabled by default. */
-    verticalScrollEnabled?: boolean;
+    panEnabled?: boolean;
     /** Enabled by default. */
-    horizontalScrollEnabled?: boolean;
+    verticalPanEnabled?: boolean;
+    /** Enabled by default. */
+    horizontalPanEnabled?: boolean;
     snapToLocation?: (info: IScrollInfo) => Partial<IPoint> | undefined;
     onViewportSizeChanged?: (collection: RecyclerGridView) => void;
     /**
@@ -138,6 +146,7 @@ export default class RecyclerGridView extends React.PureComponent<
     private _panVelocty: IPoint;
     private _isPanning = false;
     private _panResponder?: PanResponderInstance;
+    private _panTarget$: Animated.ValueXY;
     private _descelerationAnimation?: Animated.CompositeAnimation;
     private _viewOffset: IPoint;
     private _containerSize: IPoint;
@@ -230,6 +239,8 @@ export default class RecyclerGridView extends React.PureComponent<
         sub = this.viewOffset$.addListener(p => this._onViewOffsetChange(p));
         this._animatedSubscriptions[sub] = this.viewOffset$;
 
+        this._panTarget$ = this.props.panTarget || this.viewOffset$;
+
         this._panVelocty = zeroPoint();
         this._panVelocty$ = new Animated.ValueXY();
         sub = this._panVelocty$.addListener(p => {
@@ -239,30 +250,39 @@ export default class RecyclerGridView extends React.PureComponent<
         this._animatedSubscriptions[sub] = this._panVelocty$;
 
         let {
-            horizontalScrollEnabled = true,
-            verticalScrollEnabled = true,
+            panEnabled: panEnabled = true,
+            horizontalPanEnabled: horizontalScrollEnabled = true,
+            verticalPanEnabled: verticalScrollEnabled = true,
         } = this.props;
-        if (horizontalScrollEnabled || verticalScrollEnabled) {
+        if (!horizontalScrollEnabled && !verticalScrollEnabled) {
+            panEnabled = false;
+        }
+
+        if (panEnabled) {
             let panGestureState: Animated.Mapping = {};
             if (horizontalScrollEnabled) {
-                panGestureState.dx = this.viewOffset$.x;
+                panGestureState.dx = this._panTarget$.x;
                 panGestureState.vx = this._panVelocty$.x;
             }
             if (verticalScrollEnabled) {
-                panGestureState.dy = this.viewOffset$.y;
+                panGestureState.dy = this._panTarget$.y;
                 panGestureState.vy = this._panVelocty$.y;
             }
-            const lockTruthFactory = () => {
-                return removeDefaultCurry(() => {
+            const aquire = () => {
+                return (e: GestureResponderEvent): boolean => {
+                    if (!panEnabled) {
+                        return false;
+                    }
+                    e?.preventDefault?.();
                     this._lockScroll();
                     return true;
-                });
+                };
             };
             this._panResponder = PanResponder.create({
-                onStartShouldSetPanResponder: lockTruthFactory(),
-                onStartShouldSetPanResponderCapture: lockTruthFactory(),
-                onMoveShouldSetPanResponder: lockTruthFactory(),
-                onMoveShouldSetPanResponderCapture: lockTruthFactory(),
+                onStartShouldSetPanResponder: aquire(),
+                // onStartShouldSetPanResponderCapture: aquire(),
+                onMoveShouldSetPanResponder: aquire(),
+                // onMoveShouldSetPanResponderCapture: aquire(),
                 onPanResponderStart: removeDefaultCurry(() => this._onBeginPan()),
                 onPanResponderMove: removeDefaultCurry(Animated.event(
                     [null, panGestureState],
@@ -384,7 +404,7 @@ export default class RecyclerGridView extends React.PureComponent<
         this._isPanning = true;
         this._descelerationAnimation?.stop();
         this._descelerationAnimation = undefined;
-        this.viewOffset$.setValue(zeroPoint());
+        this._panTarget$.setValue(zeroPoint());
     }
 
     private _onEndPan() {
@@ -398,8 +418,9 @@ export default class RecyclerGridView extends React.PureComponent<
             contentVelocity: velocity,
          } = this;
         let isZeroVelocity = Math.abs(panVelocity.x) < kPanSpeedMin && Math.abs(panVelocity.y) < kPanSpeedMin;
+        let isDefaultPan = this._panTarget$ === this.viewOffset$;
 
-        if (this.props.snapToLocation) {
+        if (isDefaultPan && this.props.snapToLocation) {
             let scrollInfo: IScrollInfo = {
                 location: { ...location },
                 velocity,
@@ -426,7 +447,7 @@ export default class RecyclerGridView extends React.PureComponent<
             if (!isZeroVelocity) {
                 // Decay velocity
                 this._descelerationAnimation = Animated.decay(
-                    this.viewOffset$, // Auto-multiplexed
+                    this._panTarget$, // Auto-multiplexed
                     {
                         velocity: panVelocity,
                         useNativeDriver: this._useNativeDriver,
@@ -442,7 +463,11 @@ export default class RecyclerGridView extends React.PureComponent<
     }
 
     private _onEndDeceleration(info: { finished: boolean }) {
-        this._transferViewOffsetToLocation();
+        let isDefaultPan = this._panTarget$ === this.viewOffset$;
+        if (isDefaultPan) {
+            this._transferViewOffsetToLocation();
+        }
+        this._panTarget$.setValue(zeroPoint());
         this._descelerationAnimation = undefined;
     }
 
@@ -453,8 +478,6 @@ export default class RecyclerGridView extends React.PureComponent<
         };
         this._viewOffset = zeroPoint();
         this._locationOffsetBase = location;
-
-        this.viewOffset$.setValue(zeroPoint());
         this._locationOffsetBase$.setValue(location);
     }
 
