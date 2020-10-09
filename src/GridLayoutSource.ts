@@ -104,7 +104,7 @@ export default class GridLayoutSource extends LayoutSource<IPoint, GridLayoutSou
     beginUpdate(view: Grid) {
         super.beginUpdate(view);
         this.pendingVisibleRange = this.getVisibleGridIndexRange(view);
-        // console.debug(`[${this.id}] visible items: ${Object.keys(this.visibleItems).length} (ok: ${Object.values(this.visibleItems).filter(item => !!(item as any).ref?.current).length})`);
+        // console.debug(`[${this.id}] visible items: ${Object.keys(this.visibleItems).length} (ok: ${Object.values(this.visibleItems).filter(item => !!item.ref?.current).length})`);
         // console.debug(`[${this.id}] currentVisibleRange: ` + JSON.stringify(this.visibleRange));
         // console.debug(`[${this.id}] pendingVisibleRange: ` + JSON.stringify(this.pendingVisibleRange));
     }
