@@ -15,7 +15,7 @@ import {
     IItemUpdate,
     InsetEdge,
     IPoint,
-    ISpringAnimationBaseOptions,
+    IAnimationBaseOptions,
 } from "./types";
 import {
     getLazyArray,
@@ -764,7 +764,7 @@ export default class LayoutSource<
         index: T,
         options?: {
             isNew?: boolean;
-        } & ISpringAnimationBaseOptions
+        } & IAnimationBaseOptions
     ): Animated.CompositeAnimation | undefined {
         let previousContentLayout = item.contentLayout;
         let newContentLayout = this.getItemContentLayout(index);
@@ -910,7 +910,7 @@ export default class LayoutSource<
             dequeue?: boolean;
             create?: boolean;
             update?: boolean;
-        } & ISpringAnimationBaseOptions
+        } & IAnimationBaseOptions
     ): Animated.CompositeAnimation | undefined {
         let {
             queue = true,
@@ -969,7 +969,7 @@ export default class LayoutSource<
             console.error('Error during update: ' + error?.message || error);
             this.cancelUpdate(view);
         }
-        
+
         animation = undefined;
         if (animations.length !== 0) {
             animation = Animated.parallel(animations);

@@ -8,7 +8,7 @@ import {
     AnimatedValueDerivedInput,
     AnimatedValueXYDerivedInput,
     IAnimatedValueXYInput,
-    ISpringAnimationBaseOptions,
+    IAnimationBaseOptions,
 } from './types';
 import { zeroPoint } from './util';
 
@@ -115,21 +115,29 @@ export const animateValueIfNeeded = (
     value$: Animated.Value,
     fromValue: number,
     toValue: number,
-    options?: ISpringAnimationBaseOptions
+    options: IAnimationBaseOptions = {}
 ): Animated.CompositeAnimation | undefined => {
     if (toValue === fromValue) {
         return undefined;
     }
-    if (!options?.animated) {
+    if (!options.animated) {
         value$.setValue(toValue);
         return undefined;
     }
 
-    return Animated.spring(value$, {
-        useNativeDriver: false,
-        ...options,
-        toValue,
-    });
+    if (options.timing) {
+        return Animated.timing(value$, {
+            useNativeDriver: false,
+            ...options.timing,
+            toValue,
+        });
+    } else {
+        return Animated.spring(value$, {
+            useNativeDriver: false,
+            ...options.spring,
+            toValue,
+        });
+    }
 };
 
 // export const useImport = (
