@@ -3,6 +3,7 @@ import {
     Animated,
     AppState,
     GestureResponderEvent,
+    InteractionManager,
     PanResponder,
     PanResponderCallbacks,
     PanResponderGestureState,
@@ -19,6 +20,7 @@ import {
     IInsets,
     IPoint,
     PanPressableProps,
+    IAnimationBaseOptions,
 } from "./types";
 import {
     zeroPoint,
@@ -51,12 +53,6 @@ export interface IScrollInfo {
     offset: IPoint,
     /** Viewport velocity in view coordinates (pixels). */
     scaledVelocity: IPoint,
-}
-
-export interface IScrollBaseOptions extends Omit<Animated.SpringAnimationConfig, 'toValue'> {
-    animated?: boolean;
-    manualStart?: boolean;
-    onEnd?: (info: { finished: boolean }) => void;
 }
 
 export interface RecyclerCollectionViewProps extends ViewProps, PanPressableProps {
@@ -181,6 +177,7 @@ export default class RecyclerGridView extends React.PureComponent<
     private _scrollLocked$ = new Animated.Value(0);
     private _scrollLocked = false;
     private _useNativeDriver: boolean;
+    private _interactionHandle = 0;
 
     constructor(props: RecyclerCollectionViewProps) {
         super(props);
@@ -211,8 +208,10 @@ export default class RecyclerGridView extends React.PureComponent<
         this._containerOffset = zeroPoint();
         this.containerOffset$ = new Animated.ValueXY();
         sub = this.containerOffset$.addListener(p => {
+            if (Math.abs(p.x - this._containerOffset.x) < 1 && Math.abs(p.y - this._containerOffset.y) < 1) {
+                return;
+            }
             this._containerOffset = p;
-            console.debug(`_containerOffset: ${JSON.stringify(p)}`);
             this.didChangeContainerOffset();
         });
         this._animatedSubscriptions[sub] = this.containerOffset$;
@@ -509,6 +508,8 @@ export default class RecyclerGridView extends React.PureComponent<
         this._descelerationAnimation = undefined;
         this._panTarget$.setValue(zeroPoint());
 
+        this._startInteraction();
+
         this.props.onPressIn?.(e, gestureState);
         this._startLongPressTimer();
     }
@@ -521,6 +522,8 @@ export default class RecyclerGridView extends React.PureComponent<
 
         if (this._panStarted) {
             this._onEndPan();
+        } else {
+            this._endInteration();
         }
         this._panDefaultPrevented = false;
 
@@ -559,7 +562,7 @@ export default class RecyclerGridView extends React.PureComponent<
                     };
                     this.scrollToLocation({
                         location: scrollLocation,
-                        velocity,
+                        spring: { velocity },
                         animated: true,
                     });
                     handled = true;
@@ -577,20 +580,40 @@ export default class RecyclerGridView extends React.PureComponent<
                             useNativeDriver: this._useNativeDriver,
                         }
                     );
+                    this._onStartDeceleration();
                     this._descelerationAnimation.start(info => this._onEndDeceleration(info));
                 } else {
                     this._onEndDeceleration({ finished: true });
                 }
+                handled = true;
             }
         }
 
         this._panVelocty = zeroPoint();
     }
 
+    private _onStartDeceleration() {
+        this._startInteraction();
+    }
+
     private _onEndDeceleration(info: { finished: boolean }) {
         this._transferViewOffsetToLocation();
         this._panTarget$.setValue(zeroPoint());
         this._descelerationAnimation = undefined;
+        this._endInteration();
+    }
+
+    private _startInteraction() {
+        if (!this._interactionHandle) {
+            this._interactionHandle = InteractionManager.createInteractionHandle();
+        }
+    }
+
+    private _endInteration() {
+        if (this._interactionHandle) {
+            InteractionManager.clearInteractionHandle(this._interactionHandle);
+            this._interactionHandle = 0;
+        }
     }
 
     private _transferViewOffsetToLocation() {
@@ -890,7 +913,7 @@ export default class RecyclerGridView extends React.PureComponent<
     }
 
     scrollToLocation(
-        options: { location: IPoint } & Partial<IScrollBaseOptions>
+        options: { location: IPoint } & IAnimationBaseOptions
     ): Animated.CompositeAnimation | undefined {
         // console.debug('scrollToLocation: ' + JSON.stringify(options.location));
         if (this._panStarted) {
@@ -899,6 +922,7 @@ export default class RecyclerGridView extends React.PureComponent<
         this._descelerationAnimation?.stop();
         this._descelerationAnimation = undefined;
 
+        this._startInteraction();
         this._transferViewOffsetToLocation();
 
         if (!options.animated) {
@@ -909,22 +933,35 @@ export default class RecyclerGridView extends React.PureComponent<
             return;
         }
 
-        this._descelerationAnimation = Animated.spring(
-            this._locationOffsetBase$, // Auto-multiplexed
-            {
-                toValue: options.location,
-                velocity: options.velocity || this.contentVelocity,
-                bounciness: 0,
-                // friction: 4,
-                useNativeDriver: this._useNativeDriver,
-                ...options,
-            }
-        );
+        if (options.timing) {
+            this._descelerationAnimation = Animated.timing(
+                this._locationOffsetBase$,
+                {
+                    toValue: options.location,
+                    ...options.timing,
+                    useNativeDriver: this._useNativeDriver,
+                }
+            );
+        } else {
+            this._descelerationAnimation = Animated.spring(
+                this._locationOffsetBase$, // Auto-multiplexed
+                {
+                    toValue: options.location,
+                    velocity: options.spring?.velocity || this.contentVelocity,
+                    bounciness: 0,
+                    ...options.spring,
+                    useNativeDriver: this._useNativeDriver,
+                }
+            );
+        }
         if (!options.manualStart) {
+            this._onStartDeceleration();
             this._descelerationAnimation.start(info => {
                 this._onEndDeceleration(info);
                 options.onEnd?.(info);
             });
+        } else {
+            this._endInteration();
         }
         return this._descelerationAnimation;
     }

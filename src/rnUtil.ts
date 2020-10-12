@@ -8,6 +8,7 @@ import {
     AnimatedValueDerivedInput,
     AnimatedValueXYDerivedInput,
     IAnimatedValueXYInput,
+    IAnimationBaseOptions,
 } from './types';
 import { zeroPoint } from './util';
 
@@ -108,6 +109,35 @@ export function removeDefaultCurry<T>(
         }
         return cb(e, gestureState);
     };
+};
+
+export const animateValueIfNeeded = (
+    value$: Animated.Value,
+    fromValue: number,
+    toValue: number,
+    options: IAnimationBaseOptions = {}
+): Animated.CompositeAnimation | undefined => {
+    if (toValue === fromValue) {
+        return undefined;
+    }
+    if (!options.animated) {
+        value$.setValue(toValue);
+        return undefined;
+    }
+
+    if (options.timing) {
+        return Animated.timing(value$, {
+            useNativeDriver: false,
+            ...options.timing,
+            toValue,
+        });
+    } else {
+        return Animated.spring(value$, {
+            useNativeDriver: false,
+            ...options.spring,
+            toValue,
+        });
+    }
 };
 
 // export const useImport = (
