@@ -15,12 +15,14 @@ import {
     IItemUpdate,
     InsetEdge,
     IPoint,
+    ISpringAnimationBaseOptions,
 } from "./types";
 import {
     getLazyArray,
     zeroPoint,
 } from "./util";
 import {
+    animateValueIfNeeded,
     negate$,
     normalizeAnimatedValue,
     normalizeAnimatedValueXY,
@@ -762,8 +764,8 @@ export default class LayoutSource<
         index: T,
         options?: {
             isNew?: boolean;
-        }
-    ) {
+        } & ISpringAnimationBaseOptions
+    ): Animated.CompositeAnimation | undefined {
         let previousContentLayout = item.contentLayout;
         let newContentLayout = this.getItemContentLayout(index);
         if (newContentLayout.size.x <= 0 || newContentLayout.size.y <= 0) {
@@ -784,20 +786,48 @@ export default class LayoutSource<
             offset: offset$,
             size: size$,
         } = item.animated.contentLayout;
+
+        let animations: Animated.CompositeAnimation[] = [];
+        let animation: Animated.CompositeAnimation | undefined;
+
         if (offset) {
-            if (offset.x !== previousContentLayout.offset.x) {
-                offset$.x.setValue(offset.x);
+            animation = animateValueIfNeeded(
+                offset$.x,
+                previousContentLayout.offset.x,
+                offset.x,
+                options,
+            );
+            if (animation) {
+                animations.push(animation);
             }
-            if (offset.y !== previousContentLayout.offset.y) {
-                offset$.y.setValue(offset.y);
+            animation = animateValueIfNeeded(
+                offset$.y,
+                previousContentLayout.offset.y,
+                offset.y,
+                options,
+            );
+            if (animation) {
+                animations.push(animation);
             }
         }
         if (size) {
-            if (size.x !== previousContentLayout.size.x) {
-                size$.x.setValue(size.x);
+            animation = animateValueIfNeeded(
+                size$.x,
+                previousContentLayout.size.x,
+                size.x,
+                options,
+            );
+            if (animation) {
+                animations.push(animation);
             }
-            if (size.y !== previousContentLayout.size.y) {
-                size$.y.setValue(size.y);
+            animation = animateValueIfNeeded(
+                size$.y,
+                previousContentLayout.size.y,
+                size.y,
+                options,
+            );
+            if (animation) {
+                animations.push(animation);
             }
         }
 
@@ -816,6 +846,14 @@ export default class LayoutSource<
 
         this.props.willShowItem?.(item);
         this.setVisibleItem(index, item);
+
+        if (animations.length !== 0) {
+            animation = Animated.parallel(animations);
+            if (!options?.manualStart) {
+                animation.start();
+            }
+        }
+        return animation;
     }
 
     getVisibleItem(index: T): IItem<T> | undefined {
@@ -872,15 +910,19 @@ export default class LayoutSource<
             dequeue?: boolean;
             create?: boolean;
             update?: boolean;
-        }
-    ) {
+        } & ISpringAnimationBaseOptions
+    ): Animated.CompositeAnimation | undefined {
         let {
             queue = true,
             dequeue = true,
             create = false,
             update = false,
+            ...animationOptions
         } = options || {};
         let dequeueOptions = { prerender: create };
+        let animations: Animated.CompositeAnimation[] = [];
+        let animation: Animated.CompositeAnimation | undefined;
+
         // console.debug(`[${this.id}] ` + 'updateItems');
         this.beginUpdate(view);
         try {
@@ -906,11 +948,19 @@ export default class LayoutSource<
                     // }
                 }
             }
-            if (update) {
+            let itemAnimationOptions = {
+                ...animationOptions,
+                manualStart: true,
+            };
+
+            if (update || animationOptions.animated) {
                 for (let index of this.visibleIndexes()) {
                     let item = this.getVisibleItem(index);
                     if (item) {
-                        this.updateItem(item, index);
+                        animation = this.updateItem(item, index, itemAnimationOptions);
+                        if (animation) {
+                            animations.push(animation);
+                        }
                     }
                 }
             }
@@ -919,6 +969,15 @@ export default class LayoutSource<
             console.error('Error during update: ' + error?.message || error);
             this.cancelUpdate(view);
         }
+        
+        animation = undefined;
+        if (animations.length !== 0) {
+            animation = Animated.parallel(animations);
+            if (!options?.manualStart) {
+                animation.start();
+            }
+        }
+        return animation;
     }
 
     dequeueItem(

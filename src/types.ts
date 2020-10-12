@@ -94,6 +94,12 @@ export interface IInsets<T=number> {
 
 export type InsetEdge = keyof IInsets;
 
+export interface ISpringAnimationBaseOptions extends Partial<Omit<Animated.SpringAnimationConfig, 'toValue'>> {
+    animated?: boolean;
+    manualStart?: boolean;
+    onEnd?: (info: { finished: boolean }) => void;
+}
+
 export interface PanPressableProps {
     /**
      * Called when a single tap gesture is detected.

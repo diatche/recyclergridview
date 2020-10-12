@@ -8,6 +8,7 @@ import {
     AnimatedValueDerivedInput,
     AnimatedValueXYDerivedInput,
     IAnimatedValueXYInput,
+    ISpringAnimationBaseOptions,
 } from './types';
 import { zeroPoint } from './util';
 
@@ -108,6 +109,27 @@ export function removeDefaultCurry<T>(
         }
         return cb(e, gestureState);
     };
+};
+
+export const animateValueIfNeeded = (
+    value$: Animated.Value,
+    fromValue: number,
+    toValue: number,
+    options?: ISpringAnimationBaseOptions
+): Animated.CompositeAnimation | undefined => {
+    if (toValue === fromValue) {
+        return undefined;
+    }
+    if (!options?.animated) {
+        value$.setValue(toValue);
+        return undefined;
+    }
+
+    return Animated.spring(value$, {
+        useNativeDriver: false,
+        ...options,
+        toValue,
+    });
 };
 
 // export const useImport = (

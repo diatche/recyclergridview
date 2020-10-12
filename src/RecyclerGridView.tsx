@@ -19,6 +19,7 @@ import {
     IInsets,
     IPoint,
     PanPressableProps,
+    ISpringAnimationBaseOptions,
 } from "./types";
 import {
     zeroPoint,
@@ -51,12 +52,6 @@ export interface IScrollInfo {
     offset: IPoint,
     /** Viewport velocity in view coordinates (pixels). */
     scaledVelocity: IPoint,
-}
-
-export interface IScrollBaseOptions extends Omit<Animated.SpringAnimationConfig, 'toValue'> {
-    animated?: boolean;
-    manualStart?: boolean;
-    onEnd?: (info: { finished: boolean }) => void;
 }
 
 export interface RecyclerCollectionViewProps extends ViewProps, PanPressableProps {
@@ -890,7 +885,7 @@ export default class RecyclerGridView extends React.PureComponent<
     }
 
     scrollToLocation(
-        options: { location: IPoint } & Partial<IScrollBaseOptions>
+        options: { location: IPoint } & ISpringAnimationBaseOptions
     ): Animated.CompositeAnimation | undefined {
         // console.debug('scrollToLocation: ' + JSON.stringify(options.location));
         if (this._panStarted) {
@@ -916,8 +911,8 @@ export default class RecyclerGridView extends React.PureComponent<
                 velocity: options.velocity || this.contentVelocity,
                 bounciness: 0,
                 // friction: 4,
-                useNativeDriver: this._useNativeDriver,
                 ...options,
+                useNativeDriver: this._useNativeDriver,
             }
         );
         if (!options.manualStart) {
