@@ -64,6 +64,34 @@ export const negate$ = (x: Animated.Animated) => {
     return Animated.subtract(0, x);
 };
 
+export const concatFunctions = (f1: any, f2: any) => {
+    if (f1 && !f2) {
+        return f1;
+    } else if (!f1 && f2) {
+        return f2;
+    } else if (f1 && f2) {
+        return (...args: any[]) => {
+            f1(...args);
+            return f2(...args) as any;
+        };
+    } else {
+        return undefined;
+    }
+};
+
+export const safeFunction = (f: any) => {
+    if (!f) {
+        return undefined;
+    }
+    return (...args: any[]) => {
+        try {
+            return f(...args);
+        } catch (error) {
+            console.error(`Uncaught error: ${error.message}`);
+        }
+    };
+};
+
 export function removeDefaultCurry<T>(
     cb: (
         e: GestureResponderEvent,
