@@ -498,6 +498,10 @@ export default class RecyclerGridView extends React.PureComponent<
         e: GestureResponderEvent,
         gestureState: PanResponderGestureState
     ) {
+        // Since we are reusing a synthetic event,
+        // disable event object pooling.
+        e.persist();
+
         this._pressInEvent = e;
         this._pressInGestureState = gestureState;
 
