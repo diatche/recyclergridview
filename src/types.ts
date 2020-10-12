@@ -1,5 +1,9 @@
 import React from "react";
-import { View, Animated } from 'react-native';
+import { 
+    Animated,
+    GestureResponderEvent,
+    PanResponderGestureState,
+} from 'react-native';
 import { ItemView } from "./internal";
 
 export declare type AxisType = 'topAxis' | 'rightAxis' | 'bottomAxis' | 'leftAxis';
@@ -89,3 +93,35 @@ export interface IInsets<T=number> {
 }
 
 export type InsetEdge = keyof IInsets;
+
+export interface PanPressableProps {
+    /**
+     * Called when a single tap gesture is detected.
+     */
+    onPress?: null | ((event: GestureResponderEvent, gestureState: PanResponderGestureState) => void);
+
+    /**
+     * Called when a touch is engaged before `onPress`.
+     */
+    onPressIn?: null | ((event: GestureResponderEvent, gestureState: PanResponderGestureState) => void);
+
+    /**
+     * Called when a touch is released before `onPress`.
+     */
+    onPressOut?: null | ((event: GestureResponderEvent, gestureState: PanResponderGestureState) => void);
+
+    /**
+     * Called when a long-tap gesture is detected.
+     */
+    onLongPress?: null | ((event: GestureResponderEvent, gestureState: PanResponderGestureState) => void);
+
+    /**
+     * Duration (in milliseconds) from onPressIn before onLongPress is called.
+     */
+    delayLongPress?: number;
+
+    /**
+     * Maximum pan distance (in pixels) from onPressIn location for onLongPress to be called.
+     */
+    longPressMaxDistance?: number;
+}

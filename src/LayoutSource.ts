@@ -293,6 +293,11 @@ export default class LayoutSource<
         throw new Error('Not implemented');
     }
 
+    setItemNeedsRender(index: T) {
+        let item = this.getVisibleItem(index);
+        item?.ref.current?.setNeedsRender();
+    }
+
     setNeedsUpdate(view: Grid, options?: { force?: boolean }) {
         let { force = false } = options || {};
         if (!force && view.needsRender) {
@@ -402,14 +407,20 @@ export default class LayoutSource<
         }
     ): [IPoint, IPoint] {
         let range = this.getVisibleLocationRange(view);
-        range[0] = this.getGridIndex(range[0], view);
-        range[1] = this.getGridIndex(range[1], view);
-        if (!options?.partial) {
-            range[0].x = Math.floor(range[0].x);
-            range[0].y = Math.floor(range[0].y);
-            range[1].x = Math.ceil(range[1].x);
-            range[1].y = Math.ceil(range[1].y);
-        }
+        range[0] = this.getGridIndex(
+            range[0],
+            view,
+            options?.partial
+                ? undefined
+                : { floor: true }
+        );
+        range[1] = this.getGridIndex(
+            range[1],
+            view, 
+            options?.partial
+                ? undefined
+                : { ceil: true }
+        );
         return range;
     }
 
@@ -600,17 +611,41 @@ export default class LayoutSource<
      * to an index of a grid of size `itemSize`.
      * @param point 
      */
-    getGridIndex(point: IPoint, view: Grid): IPoint {
+    getGridIndex(
+        point: IPoint,
+        view: Grid,
+        options?: {
+            floor?: boolean;
+            ceil?: boolean;
+            round?: boolean;
+        }
+    ): IPoint {
         let { itemSize } = this;
+        if (itemSize.x <= 0 || itemSize.y <= 0) {
+            return zeroPoint();
+        }
         // return {
         //     x: point.x / itemSize.x,
         //     y: point.y / itemSize.y,
         // };
         let offset = this.getLocationInsetOffset(view);
-        return {
+        let i = {
             x: (point.x - offset.x) / itemSize.x,
             y: (point.y - offset.y) / itemSize.y,
         };
+        if (options) {
+            if (options.floor) {
+                i.x = Math.floor(i.x);
+                i.y = Math.floor(i.y);
+            } else if (options.ceil) {
+                i.x = Math.ceil(i.x);
+                i.y = Math.ceil(i.y);
+            } else if (options.round) {
+                i.x = Math.round(i.x);
+                i.y = Math.round(i.y);
+            }
+        }
+        return i;
     }
 
     getViewportOffset(view: Grid): IPoint {
@@ -730,9 +765,15 @@ export default class LayoutSource<
         }
     ) {
         let previousContentLayout = item.contentLayout;
+        let newContentLayout = this.getItemContentLayout(index);
+        if (newContentLayout.size.x <= 0 || newContentLayout.size.y <= 0) {
+            console.warn('Ignoring invalid item size');
+            newContentLayout.size = previousContentLayout.size;
+        }
+        item.index = index;
         item.contentLayout = {
             ...item.contentLayout,
-            ...this.getItemContentLayout(index),
+            ...newContentLayout,
         };
         if (!item.zIndex) {
             item.zIndex = this.zIndex;

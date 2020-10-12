@@ -2,7 +2,10 @@ import React from "react";
 import {
     Animated,
     AppState,
+    GestureResponderEvent,
     PanResponder,
+    PanResponderCallbacks,
+    PanResponderGestureState,
     PanResponderInstance,
     ViewProps,
 } from "react-native";
@@ -15,14 +18,17 @@ import {
     IItem,
     IInsets,
     IPoint,
+    PanPressableProps,
 } from "./types";
 import {
     zeroPoint,
 } from "./util";
 import {
+    concatFunctions,
     negate$,
     normalizeAnimatedValueXY,
     removeDefaultCurry,
+    safeFunction,
 } from "./rnUtil";
 import ScrollLock from "./ScrollLock";
 
@@ -32,6 +38,8 @@ const kDefaultProps = {
     zIndexStart: 10,
     zIndexStride: 10,
     useNativeDriver: false,
+    delayLongPress: 500,
+    longPressMaxDistance: 3,
 };
 
 export interface IScrollInfo {
@@ -51,7 +59,7 @@ export interface IScrollBaseOptions extends Omit<Animated.SpringAnimationConfig,
     onEnd?: (info: { finished: boolean }) => void;
 }
 
-export interface RecyclerCollectionViewProps extends ViewProps {
+export interface RecyclerCollectionViewProps extends ViewProps, PanPressableProps {
     renderItem: (item: IItem<any>, layoutSource: LayoutSource<any>, view: RecyclerGridView) => React.ReactNode;
     scrollLock?: boolean;
     layoutSources: LayoutSource<any>[];
@@ -67,10 +75,22 @@ export interface RecyclerCollectionViewProps extends ViewProps {
      **/
     anchor?: AnimatedValueXYDerivedInput<RecyclerGridView>;
     viewportInsets?: Partial<IInsets<AnimatedValueDerivedInput<RecyclerGridView>>>,
+    /**
+     * Modify the pan target.
+     * Defaults to [viewOffset]{@link RecyclerGridView#viewOffset}
+     */
+    panTarget?: Animated.ValueXY;
     /** Enabled by default. */
-    verticalScrollEnabled?: boolean;
+    panEnabled?: boolean;
     /** Enabled by default. */
-    horizontalScrollEnabled?: boolean;
+    verticalPanEnabled?: boolean;
+    /** Enabled by default. */
+    horizontalPanEnabled?: boolean;
+    /**
+     * Sets pan responder callbacks.
+     * Values returned by the callbacks are ignored.
+     **/
+    panResponderCallbacks?: Partial<PanResponderCallbacks>;
     snapToLocation?: (info: IScrollInfo) => Partial<IPoint> | undefined;
     onViewportSizeChanged?: (collection: RecyclerGridView) => void;
     /**
@@ -117,8 +137,10 @@ export default class RecyclerGridView extends React.PureComponent<
 > {
     readonly layoutSources: LayoutSource<any>[];
     readonly viewOffset$: Animated.ValueXY;
-    /** Animated container size including axes. */
+    /** Animated container size. */
     readonly containerSize$: Animated.ValueXY;
+    /** Animated container screen offset. */
+    readonly containerOffset$: Animated.ValueXY;
     readonly scale$: Animated.ValueXY;
     /**
      * The point with values in the range 0-1.
@@ -129,6 +151,8 @@ export default class RecyclerGridView extends React.PureComponent<
      * center of the viewport.
      **/
     readonly anchor$: Animated.ValueXY;
+    readonly panResponder?: PanResponderInstance;
+    
     private _locationOffsetBase$: Animated.ValueXY;
     private _locationOffsetBase: IPoint;
     private _scale: IPoint;
@@ -136,12 +160,18 @@ export default class RecyclerGridView extends React.PureComponent<
     private _anchor: IPoint;
     private _panVelocty$: Animated.ValueXY;
     private _panVelocty: IPoint;
-    private _isPanning = false;
-    private _panResponder?: PanResponderInstance;
+    private _panStarted = false;
+    private _panDefaultPrevented = false;
+    private _panTarget$: Animated.ValueXY;
+    private _longPressTimer?: any;
+    private _isLongPress = false;
+    private _pressInEvent?: GestureResponderEvent;
+    private _pressInGestureState?: PanResponderGestureState;
     private _descelerationAnimation?: Animated.CompositeAnimation;
     private _viewOffset: IPoint;
     private _containerSize: IPoint;
     private _hasContainerSize = false;
+    private _containerOffset: IPoint;
     private _itemCounter = 0;
     private _itemViewCounter = 0;
     private _needsRender = true;
@@ -154,16 +184,18 @@ export default class RecyclerGridView extends React.PureComponent<
 
     constructor(props: RecyclerCollectionViewProps) {
         super(props);
-        this._useNativeDriver = props.useNativeDriver || kDefaultProps.useNativeDriver;
+        this._useNativeDriver = this.props.useNativeDriver || kDefaultProps.useNativeDriver;
         if (this._useNativeDriver) {
             throw new Error('Using native driver is not supported due to limitations with animating layout props.');
         }
 
-        this.layoutSources =[ ...props.layoutSources ];
+        this.layoutSources = [...this.props.layoutSources];
+
+        let sub = '';
 
         this._containerSize = zeroPoint();
         this.containerSize$ = new Animated.ValueXY();
-        let sub = this.containerSize$.addListener(p => {
+        sub = this.containerSize$.addListener(p => {
             if (p.x <= 0 || p.y <= 0) {
                 console.debug('Ignoring invalid containerSize value: ' + JSON.stringify(p));
                 return;
@@ -176,7 +208,16 @@ export default class RecyclerGridView extends React.PureComponent<
         });
         this._animatedSubscriptions[sub] = this.containerSize$;
 
-        this.scale$ = normalizeAnimatedValueXY(props.scale, this, { x: 1, y: 1});
+        this._containerOffset = zeroPoint();
+        this.containerOffset$ = new Animated.ValueXY();
+        sub = this.containerOffset$.addListener(p => {
+            this._containerOffset = p;
+            console.debug(`_containerOffset: ${JSON.stringify(p)}`);
+            this.didChangeContainerOffset();
+        });
+        this._animatedSubscriptions[sub] = this.containerOffset$;
+
+        this.scale$ = normalizeAnimatedValueXY(this.props.scale, this, { x: 1, y: 1});
         this._scale = {
             // @ts-ignore: _value is private
             x: this.scale$.x._value || 0,
@@ -196,7 +237,7 @@ export default class RecyclerGridView extends React.PureComponent<
         });
         this._animatedSubscriptions[sub] = this.scale$;
 
-        this.anchor$ = normalizeAnimatedValueXY(props.anchor, this);
+        this.anchor$ = normalizeAnimatedValueXY(this.props.anchor, this);
         this._anchor = {
             // @ts-ignore: _value is private
             x: this.anchor$.x._value || 0,
@@ -212,7 +253,7 @@ export default class RecyclerGridView extends React.PureComponent<
         });
         this._animatedSubscriptions[sub] = this.anchor$;
 
-        this._locationOffsetBase$ = normalizeAnimatedValueXY(props.location, this);
+        this._locationOffsetBase$ = normalizeAnimatedValueXY(this.props.location, this);
         this._locationOffsetBase = {
             // @ts-ignore: _value is private
             x: this._locationOffsetBase$.x._value || 0,
@@ -230,6 +271,8 @@ export default class RecyclerGridView extends React.PureComponent<
         sub = this.viewOffset$.addListener(p => this._onViewOffsetChange(p));
         this._animatedSubscriptions[sub] = this.viewOffset$;
 
+        this._panTarget$ = this.props.panTarget || this.viewOffset$;
+
         this._panVelocty = zeroPoint();
         this._panVelocty$ = new Animated.ValueXY();
         sub = this._panVelocty$.addListener(p => {
@@ -239,40 +282,63 @@ export default class RecyclerGridView extends React.PureComponent<
         this._animatedSubscriptions[sub] = this._panVelocty$;
 
         let {
-            horizontalScrollEnabled = true,
-            verticalScrollEnabled = true,
+            panEnabled: panEnabled = true,
+            horizontalPanEnabled: horizontalScrollEnabled = true,
+            verticalPanEnabled: verticalScrollEnabled = true,
         } = this.props;
-        if (horizontalScrollEnabled || verticalScrollEnabled) {
+        if (!horizontalScrollEnabled && !verticalScrollEnabled) {
+            panEnabled = false;
+        }
+
+        if (panEnabled) {
             let panGestureState: Animated.Mapping = {};
             if (horizontalScrollEnabled) {
-                panGestureState.dx = this.viewOffset$.x;
+                panGestureState.dx = this._panTarget$.x;
                 panGestureState.vx = this._panVelocty$.x;
             }
             if (verticalScrollEnabled) {
-                panGestureState.dy = this.viewOffset$.y;
+                panGestureState.dy = this._panTarget$.y;
                 panGestureState.vy = this._panVelocty$.y;
             }
-            const lockTruthFactory = () => {
-                return removeDefaultCurry(() => {
+            const aquire = () => {
+                return (e: GestureResponderEvent): boolean => {
+                    if (!panEnabled) {
+                        return false;
+                    }
+                    e?.preventDefault?.();
                     this._lockScroll();
                     return true;
-                });
+                };
             };
-            this._panResponder = PanResponder.create({
-                onStartShouldSetPanResponder: lockTruthFactory(),
-                onStartShouldSetPanResponderCapture: lockTruthFactory(),
-                onMoveShouldSetPanResponder: lockTruthFactory(),
-                onMoveShouldSetPanResponderCapture: lockTruthFactory(),
-                onPanResponderStart: removeDefaultCurry(() => this._onBeginPan()),
-                onPanResponderMove: removeDefaultCurry(Animated.event(
-                    [null, panGestureState],
-                    {
-                        // listener: event => {},
-                        useNativeDriver: this._useNativeDriver
+            let panConfig: PanResponderCallbacks = {
+                onStartShouldSetPanResponder: aquire(),
+                // onStartShouldSetPanResponderCapture: aquire(),
+                onMoveShouldSetPanResponder: aquire(),
+                // onMoveShouldSetPanResponderCapture: aquire(),
+                onPanResponderStart: removeDefaultCurry((e, g) => this._onBeginPan(e, g)),
+                onPanResponderMove: removeDefaultCurry((...args: any[]) => {
+                    if (this._panDefaultPrevented) {
+                        return;
                     }
-                )),
-                onPanResponderEnd: removeDefaultCurry(() => this._onEndPan()),
-            });
+                    Animated.event(
+                        [null, panGestureState],
+                        {
+                            // listener: event => {},
+                            useNativeDriver: this._useNativeDriver
+                        }
+                    )(...args);
+                }),
+                onPanResponderEnd: removeDefaultCurry((e, g) => this._onPressOut(e, g)),
+            };
+            // Add external callbacks
+            let cbKeys = Object.keys(this.props.panResponderCallbacks || {}) as (keyof PanResponderCallbacks)[];
+            for (let cbKey of cbKeys) {
+                panConfig[cbKey] = concatFunctions(
+                    safeFunction(this.props.panResponderCallbacks?.[cbKey]),
+                    panConfig[cbKey]
+                );
+            }
+            this.panResponder = PanResponder.create(panConfig);
         }
 
         this.state = {
@@ -298,11 +364,61 @@ export default class RecyclerGridView extends React.PureComponent<
             value.removeListener(sub);
         }
         this._animatedSubscriptions = {};
+
+        this._resetLongPress();
     }
 
     UNSAFE_componentWillUpdate() {
         // console.debug('UNSAFE_componentWillUpdate');
         this._updateLayoutSources();
+    }
+
+    get isPanningContent() {
+        return this._panStarted && !this._panDefaultPrevented;
+    }
+
+    /**
+     * Calling this during a panning gesture, stops
+     * the panning gesture until the gesture is finished.
+     * 
+     * This is useful for interacting with content, for example.
+     * You can achive this by creating a reference to this node
+     * and calling `preventDefaultPan` in `onLongPress` callback.
+     */
+    preventDefaultPan() {
+        if (this._panDefaultPrevented) {
+            return;
+        }
+        this._panDefaultPrevented = true;
+        if (this._panStarted) {
+            this._onEndPan();
+        }
+    }
+
+    private _startLongPressTimer() {
+        this._resetLongPress();
+        let maxDist = this.props.longPressMaxDistance || kDefaultProps.longPressMaxDistance;
+        this._longPressTimer = setTimeout(() => {
+            let ev = this._pressInEvent;
+            let gestureState = this._pressInGestureState;
+            if (!ev || !gestureState) {
+                return;
+            }
+            let { dx, dy } = gestureState;
+            if (Math.abs(dx) > maxDist || Math.abs(dy) > maxDist) {
+                return;
+            }
+            this._isLongPress = true;
+            this.props.onLongPress?.(ev, gestureState);
+        }, this.props.delayLongPress || kDefaultProps.delayLongPress);
+    }
+
+    private _resetLongPress() {
+        this._isLongPress = false;
+        if (this._longPressTimer) {
+            clearTimeout(this._longPressTimer);
+            this._longPressTimer = undefined;
+        }
     }
 
     // getSnapshotBeforeUpdate(
@@ -379,62 +495,92 @@ export default class RecyclerGridView extends React.PureComponent<
         this._scrollLocked$.setValue(0);
     }
 
-    private _onBeginPan() {
+    private _onBeginPan(
+        e: GestureResponderEvent,
+        gestureState: PanResponderGestureState
+    ) {
+        this._pressInEvent = e;
+        this._pressInGestureState = gestureState;
+
         this._lockScroll();
-        this._isPanning = true;
+        this._panStarted = true;
+        this._panDefaultPrevented = false;
         this._descelerationAnimation?.stop();
         this._descelerationAnimation = undefined;
-        this.viewOffset$.setValue(zeroPoint());
+        this._panTarget$.setValue(zeroPoint());
+
+        this.props.onPressIn?.(e, gestureState);
+        this._startLongPressTimer();
+    }
+
+    private _onPressOut(
+        e: GestureResponderEvent,
+        gestureState: PanResponderGestureState
+    ) {
+        this._unlockScroll();
+
+        if (this._panStarted) {
+            this._onEndPan();
+        }
+        this._panDefaultPrevented = false;
+
+        this.props.onPressOut?.(e, gestureState);
+        if (!this._isLongPress) {
+            this.props.onPress?.(e, gestureState);
+        }
+        this._resetLongPress();
     }
 
     private _onEndPan() {
-        this._unlockScroll();
-        this._isPanning = false;
+        this._panStarted = false;
 
-        let handled = false;
+        let handled = this._panDefaultPrevented;
         let {
             locationOffset: location,
             panVelocity,
             contentVelocity: velocity,
-         } = this;
-        let isZeroVelocity = Math.abs(panVelocity.x) < kPanSpeedMin && Math.abs(panVelocity.y) < kPanSpeedMin;
+        } = this;
 
-        if (this.props.snapToLocation) {
-            let scrollInfo: IScrollInfo = {
-                location: { ...location },
-                velocity,
-                offset: this.viewOffset,
-                scaledVelocity: { ...panVelocity },
-            };
-            let maybeScrollLocation = this.props.snapToLocation?.(scrollInfo);
-            if (typeof maybeScrollLocation !== 'undefined') {
-                // Scroll to location
-                let scrollLocation: IPoint = {
-                    ...location,
-                    ...maybeScrollLocation,
-                };
-                this.scrollToLocation({
-                    location: scrollLocation,
+        let isDefaultPan = this._panTarget$ === this.viewOffset$;
+        if (isDefaultPan) {
+            if (!handled && this.props.snapToLocation) {
+                let scrollInfo: IScrollInfo = {
+                    location: { ...location },
                     velocity,
-                    animated: true,
-                });
-                handled = true;
+                    offset: this.viewOffset,
+                    scaledVelocity: { ...panVelocity },
+                };
+                let maybeScrollLocation = this.props.snapToLocation?.(scrollInfo);
+                if (typeof maybeScrollLocation !== 'undefined') {
+                    // Scroll to location
+                    let scrollLocation: IPoint = {
+                        ...location,
+                        ...maybeScrollLocation,
+                    };
+                    this.scrollToLocation({
+                        location: scrollLocation,
+                        velocity,
+                        animated: true,
+                    });
+                    handled = true;
+                }
             }
-        }
 
-        if (!handled) {
-            if (!isZeroVelocity) {
-                // Decay velocity
-                this._descelerationAnimation = Animated.decay(
-                    this.viewOffset$, // Auto-multiplexed
-                    {
-                        velocity: panVelocity,
-                        useNativeDriver: this._useNativeDriver,
-                    }
-                );
-                this._descelerationAnimation.start(info => this._onEndDeceleration(info));
-            } else {
-                this._onEndDeceleration({ finished: true });
+            if (!handled) {
+                let isZeroVelocity = Math.abs(panVelocity.x) < kPanSpeedMin && Math.abs(panVelocity.y) < kPanSpeedMin;
+                if (!isZeroVelocity) {
+                    // Decay velocity
+                    this._descelerationAnimation = Animated.decay(
+                        this._panTarget$, // Auto-multiplexed
+                        {
+                            velocity: panVelocity,
+                            useNativeDriver: this._useNativeDriver,
+                        }
+                    );
+                    this._descelerationAnimation.start(info => this._onEndDeceleration(info));
+                } else {
+                    this._onEndDeceleration({ finished: true });
+                }
             }
         }
 
@@ -443,6 +589,7 @@ export default class RecyclerGridView extends React.PureComponent<
 
     private _onEndDeceleration(info: { finished: boolean }) {
         this._transferViewOffsetToLocation();
+        this._panTarget$.setValue(zeroPoint());
         this._descelerationAnimation = undefined;
     }
 
@@ -453,8 +600,6 @@ export default class RecyclerGridView extends React.PureComponent<
         };
         this._viewOffset = zeroPoint();
         this._locationOffsetBase = location;
-
-        this.viewOffset$.setValue(zeroPoint());
         this._locationOffsetBase$.setValue(location);
     }
 
@@ -548,6 +693,10 @@ export default class RecyclerGridView extends React.PureComponent<
         this.didChangeViewportSize();
     }
 
+    didChangeContainerOffset() {
+
+    }
+
     didChangeViewportSize() {
         this.setNeedsUpdate();
         this.props.onViewportSizeChanged?.(this);
@@ -616,6 +765,18 @@ export default class RecyclerGridView extends React.PureComponent<
         return {
             x: point.x / this._scale.x,
             y: point.y / this._scale.y,
+        };
+    }
+
+    /**
+     * Transforms a point in screen coordinates
+     * to a point in container coordinates.
+     * @param point 
+     */
+    transformPointFromScreenToContainer(point: IPoint): IPoint {
+        return {
+            x: this._containerOffset.x - point.x,
+            y: this._containerOffset.y - point.y,
         };
     }
 
@@ -732,7 +893,7 @@ export default class RecyclerGridView extends React.PureComponent<
         options: { location: IPoint } & Partial<IScrollBaseOptions>
     ): Animated.CompositeAnimation | undefined {
         // console.debug('scrollToLocation: ' + JSON.stringify(options.location));
-        if (this._isPanning) {
+        if (this._panStarted) {
             return;
         }
         this._descelerationAnimation?.stop();
@@ -790,7 +951,7 @@ export default class RecyclerGridView extends React.PureComponent<
         return (
             <Animated.View
                 {...this.props}
-                {...this._panResponder?.panHandlers}
+                {...this.panResponder?.panHandlers}
                 style={[
                     this.props.style,
                     {
@@ -816,6 +977,8 @@ export default class RecyclerGridView extends React.PureComponent<
                         [{
                             nativeEvent: {
                                 layout: {
+                                    x: this.containerOffset$.x,
+                                    y: this.containerOffset$.y,
                                     width: this.containerSize$.x,
                                     height: this.containerSize$.y,
                                 }
