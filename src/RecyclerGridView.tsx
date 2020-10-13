@@ -194,7 +194,7 @@ export default class RecyclerGridView extends React.PureComponent<
         this.containerSize$ = new Animated.ValueXY();
         sub = this.containerSize$.addListener(p => {
             if (p.x <= 0 || p.y <= 0) {
-                console.debug('Ignoring invalid containerSize value: ' + JSON.stringify(p));
+                // console.debug('Ignoring invalid containerSize value: ' + JSON.stringify(p));
                 return;
             }
             if (Math.abs(p.x - this._containerSize.x) < 1 && Math.abs(p.y - this._containerSize.y) < 1) {
@@ -225,7 +225,7 @@ export default class RecyclerGridView extends React.PureComponent<
         };
         sub = this.scale$.addListener(p => {
             if (p.x === 0 || p.y === 0) {
-                console.debug('Ignoring invalid scale value: ' + JSON.stringify(p));
+                // console.debug('Ignoring invalid scale value: ' + JSON.stringify(p));
                 return;
             }
             if (p.x === this._scale.x && p.y === this._scale.y) {
@@ -708,7 +708,7 @@ export default class RecyclerGridView extends React.PureComponent<
         if (this._needsRender) {
             return;
         }
-        console.debug('setNeedsRender');
+        // console.debug('setNeedsRender');
         this._needsRender = true;
         setTimeout(() => this.setState({ renderNonce: this.state.renderNonce + 1 }), 0);
         // this.setState({ renderNonce: this.state.renderNonce + 1 });
@@ -752,6 +752,7 @@ export default class RecyclerGridView extends React.PureComponent<
     endUpdate() {
         this._updateDepth -= 1;
         if (this._updateDepth < 0) {
+            this._updateDepth = 0;
             throw new Error('Mismatched begin/end update calls');
         }
         if (this._updateDepth > 0) {
@@ -1116,10 +1117,10 @@ export default class RecyclerGridView extends React.PureComponent<
                 }
                 items.push(this._renderItem(item, layoutSource));
             }
-            layoutSource.commitUpdate(this);
+            layoutSource.endUpdate(this);
         } catch (error) {
             console.error('Error during render: ' + error?.message || error);
-            layoutSource.cancelUpdate(this);
+            layoutSource.endUpdate(this, { cancelled: true });
         }
 
         // console.debug(`[${layoutSource.id}] end render`);

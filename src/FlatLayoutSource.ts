@@ -94,25 +94,25 @@ export default class FlatLayoutSource extends LayoutSource<T, UniformLayoutSourc
         );
     }
 
-    beginUpdate(view: Grid) {
-        super.beginUpdate(view);
+    didBeginUpdate(view: Grid) {
+        super.didBeginUpdate(view);
         this.pendingVisibleRange = this.getVisibleRange(view);
         // console.debug(`[${this.id}] visible items: ` + Object.keys(this.visibleItems).length);
         // console.debug(`[${this.id}] currentVisibleRange: ` + JSON.stringify(this.visibleRange));
         // console.debug(`[${this.id}] pendingVisibleRange: ` + JSON.stringify(this.pendingVisibleRange));
     }
 
-    commitUpdate(view: Grid) {
+    didCommitUpdate(view: Grid) {
         let pendingVisibleRange = this.pendingVisibleRange;
         if (pendingVisibleRange) {
             this.visibleRange = pendingVisibleRange;
         }
-        super.commitUpdate(view);
+        super.didCommitUpdate(view);
     }
 
-    endUpdate(view: Grid) {
+    didEndUpdate(view: Grid) {
         this.pendingVisibleRange = undefined;
-        super.endUpdate(view);
+        super.didEndUpdate(view);
     }
 
     getVisibleRange(view: Grid): [T, T] {

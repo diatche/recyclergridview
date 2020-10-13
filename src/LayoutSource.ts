@@ -34,6 +34,10 @@ const kDefaultProps: Partial<LayoutSourceProps<any>> = {
 
 let _layoutSourceCounter = 0;
 
+export interface ILayoutUpdateInfo {
+    cancelled: boolean;
+}
+
 export interface LayoutSourceProps<T> {
     /**
      * The default item size in content coordinates.
@@ -135,7 +139,8 @@ export default class LayoutSource<
 
     private _itemQueues: { [reuseID: string]: IItem<T>[] };
     private _animatedSubscriptions: { [id: string]: Animated.Value | Animated.ValueXY } = {};
-    private _updating = false;
+    private _updateDepth = 0;
+    private _updateInfoQueue: (ILayoutUpdateInfo | undefined)[] = [];
 
     constructor(props: Props) {
         this.props = {
@@ -227,7 +232,7 @@ export default class LayoutSource<
         };
         sub = this.scale$.addListener(p => {
             if (p.x === 0 || p.y === 0) {
-                console.debug('Ignoring invalid scale value: ' + JSON.stringify(p));
+                // console.debug('Ignoring invalid scale value: ' + JSON.stringify(p));
                 return;
             }
             if (p.x === this._scale.x && p.y === this._scale.y) {
@@ -328,17 +333,61 @@ export default class LayoutSource<
     }
 
     /**
-     * Called when an update begins.
+     * Call this method before making layout updates.
      * 
      * Subclasses must call the super implementation first.
      * @param view 
      */
     beginUpdate(view: Grid) {
-        if (this._updating) {
-            this._updating = false;
-            throw new Error('Already updating');
+        this._updateDepth += 1;
+        if (this._updateDepth === 1) {
+            this.didBeginUpdate(view);
         }
-        this._updating = true;
+    }
+
+    /**
+     * Call this method after making layout updates.
+     * 
+     * Subclasses must call the super implementation last.
+     * @param view 
+     */
+    endUpdate(view: Grid, info?: ILayoutUpdateInfo) {
+        this._updateDepth -= 1;
+        if (this._updateDepth < 0) {
+            this._updateDepth = 0;
+            this._updateInfoQueue = [];
+            throw new Error('Mismatched layout update begin/end calls');
+        }
+        this._updateInfoQueue.push(info);
+        if (this._updateDepth > 0) {
+            return;
+        }
+        
+        let cancelled = false;
+        for (let info of this._updateInfoQueue) {
+            if (info?.cancelled) {
+                cancelled = true;
+                break;
+            }
+        }
+        this._updateInfoQueue = [];
+
+        if (cancelled) {
+            this.didCancelUpdate(view);
+        } else {
+            this.didCommitUpdate(view);
+        }
+        this.didEndUpdate(view);
+    }
+
+    /**
+     * Called when an update begins.
+     * 
+     * Subclasses must call the super implementation first.
+     * Do not call this method directly.
+     * @param view 
+     */
+    didBeginUpdate(view: Grid) {
         // console.debug(`[${this.id}] ` + 'beginUpdate');
     }
 
@@ -346,35 +395,35 @@ export default class LayoutSource<
      * Called when an update is commited.
      * 
      * Subclasses must call the super implementation last.
+     * Do not call this method directly.
      * @param view 
      */
-    commitUpdate(view: Grid) {
+    didCommitUpdate(view: Grid) {
         // console.debug(`[${this.id}] ` + 'commitUpdate');
-        this.endUpdate(view);
     }
 
     /**
      * Called when an update is cancelled.
      * 
      * Subclasses must call the super implementation last.
+     * Do not call this method directly.
      * @param view 
      */
-    cancelUpdate(view: Grid) {
+    didCancelUpdate(view: Grid) {
         // console.debug(`[${this.id}] ` + 'cancelUpdate');
-        this.endUpdate(view);
     }
 
     /**
      * Called when an update is committed or cancelled.
      * 
      * Subclasses must call the super implementation last.
+     * Do not call this method directly.
      * @param view 
      */
-    endUpdate(view: Grid) {
+    didEndUpdate(view: Grid) {
         // console.debug(`[${this.id}] ` + 'endUpdate');
-        this._commitPendingItemQueues();
-        // this._needsUpdate = false;
-        this._updating = false;
+
+        // TODO: Set opacity of newly queued items to 0
     }
 
     getVisibleLocationRange(view: Grid): [IPoint, IPoint] {
@@ -777,7 +826,7 @@ export default class LayoutSource<
         let previousContentLayout = item.contentLayout;
         let newContentLayout = this.getItemContentLayout(index);
         if (newContentLayout.size.x <= 0 || newContentLayout.size.y <= 0) {
-            console.warn('Ignoring invalid item size');
+            console.warn(`Ignoring invalid item size: ${JSON.stringify(newContentLayout.size)}`);
             newContentLayout.size = previousContentLayout.size;
         }
         item.index = index;
@@ -903,10 +952,6 @@ export default class LayoutSource<
         return true;
     }
 
-    private _commitPendingItemQueues() {
-        // TODO: Set opacity of newly queued items to 0
-    }
-
     clearQueue() {
         this._itemQueues = {};
     }
@@ -946,9 +991,9 @@ export default class LayoutSource<
                         if (create) {
                             this.createItem(add, view);
                         } else {
-                            this.cancelUpdate(view);
+                            this.endUpdate(view, { cancelled: true });
                             view.setNeedsRender();
-                            return;
+                            return undefined;
                         }
                     }
                     // else {
@@ -972,10 +1017,10 @@ export default class LayoutSource<
                     }
                 }
             }
-            this.commitUpdate(view);
+            this.endUpdate(view);
         } catch (error) {
             console.error('Error during update: ' + error?.message || error);
-            this.cancelUpdate(view);
+            this.endUpdate(view, { cancelled: true });
         }
 
         animation = undefined;
