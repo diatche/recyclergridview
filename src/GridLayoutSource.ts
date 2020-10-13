@@ -93,6 +93,14 @@ export default class GridLayoutSource extends LayoutSource<IPoint, GridLayoutSou
         }
     }
 
+    isEqualIndexes(i1: T, i2: T): boolean {
+        return i1.x === i2.x && i1.y === i2.y;
+    }
+
+    copyIndex(index: T): T {
+        return { ...index };
+    }
+
     shouldUpdate(view: Grid) {
         let pendingVisibleRange = this.getVisibleGridIndexRange(view);
         return !isPointRangeEqual(
