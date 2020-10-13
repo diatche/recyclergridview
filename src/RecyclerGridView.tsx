@@ -168,16 +168,16 @@ export default class RecyclerGridView extends React.PureComponent<
     private _containerSize: IPoint;
     private _hasContainerSize = false;
     private _containerOffset: IPoint;
-    private _itemCounter = 0;
     private _itemViewCounter = 0;
     private _needsRender = true;
-    private _emptyRender = false;
     private _animatedSubscriptions: { [id: string]: Animated.Value | Animated.ValueXY } = {};
     private _memoryWarningListener?: () => void;
     private _scrollLocked$ = new Animated.Value(0);
     private _scrollLocked = false;
     private _useNativeDriver: boolean;
     private _interactionHandle = 0;
+    private _updateDepth = 0;
+    private _updateTimer?: any;
 
     constructor(props: RecyclerCollectionViewProps) {
         super(props);
@@ -473,9 +473,9 @@ export default class RecyclerGridView extends React.PureComponent<
         }
     }
 
-    private _onViewOffsetChange({ x, y }: IPoint) {
-        this._viewOffset = { x, y };
-        this.didChangeViewOffset();
+    private _onViewOffsetChange(p: IPoint) {
+        this._viewOffset = p;
+        this.setNeedsUpdate();
     }
 
     private _lockScroll() {
@@ -621,6 +621,7 @@ export default class RecyclerGridView extends React.PureComponent<
     }
 
     private _transferViewOffsetToLocation() {
+        this.beginUpdate();
         let location = {
             x: this._locationOffsetBase.x + this._viewOffset.x / this._scale.x,
             y: this._locationOffsetBase.y + this._viewOffset.y / this._scale.y,
@@ -628,6 +629,7 @@ export default class RecyclerGridView extends React.PureComponent<
         this._viewOffset = zeroPoint();
         this._locationOffsetBase = location;
         this._locationOffsetBase$.setValue(location);
+        this.endUpdate();
     }
 
     get containerOriginOffset(): IPoint {
@@ -712,10 +714,6 @@ export default class RecyclerGridView extends React.PureComponent<
         // this.setState({ renderNonce: this.state.renderNonce + 1 });
     }
 
-    didChangeViewOffset() {
-        this.setNeedsUpdate();
-    }
-
     didChangeContainerSize() {
         this.didChangeViewportSize();
     }
@@ -741,7 +739,55 @@ export default class RecyclerGridView extends React.PureComponent<
         this.setNeedsUpdate();
     }
 
+    /**
+     * Begin a layout update block.
+     */
+    beginUpdate() {
+        this._updateDepth += 1;
+    }
+
+    /**
+     * End a layout update block.
+     */
+    endUpdate() {
+        this._updateDepth -= 1;
+        if (this._updateDepth < 0) {
+            throw new Error('Mismatched begin/end update calls');
+        }
+        if (this._updateDepth > 0) {
+            return;
+        }
+        this.scheduleUpdate();
+    }
+
+    /**
+     * Mark that a layout update is needed.
+     */
     setNeedsUpdate() {
+        this.beginUpdate();
+        this.endUpdate();
+    }
+
+    /**
+     * Schedules a layout update.
+     */
+    scheduleUpdate() {
+        if (this._updateTimer) {
+            return;
+        }
+        this._updateTimer = setTimeout(() => {
+            this.update();
+        }, 1);
+    }
+
+    /**
+     * Call to update layout immediately.
+     * Consider calling `scheduleUpdate` instead of
+     * this method to improve performance.
+     */
+    update() {
+        this._resetScheduleUpdate();
+
         if (!this._hasContainerSize) {
             if (this._containerSize.x >= 1 && this._containerSize.y >= 1) {
                 this._hasContainerSize = true;
@@ -761,6 +807,13 @@ export default class RecyclerGridView extends React.PureComponent<
 
         for (let layoutSource of this.layoutSources) {
             layoutSource.setNeedsUpdate(this);
+        }
+    }
+
+    private _resetScheduleUpdate() {
+        if (this._updateTimer) {
+            clearTimeout(this._updateTimer);
+            this._updateTimer = 0;
         }
     }
 
@@ -974,18 +1027,11 @@ export default class RecyclerGridView extends React.PureComponent<
         // console.debug('render collection view');
         // console.debug('begin render collection view');
         this._needsRender = false;
-
-        this._emptyRender = false;
-        if (this._containerSize.x === 0 || this._containerSize.y === 0) {
-            this._emptyRender = true;
-        }
+        this._resetScheduleUpdate();
 
         let itemViews: React.ReactNode[] = [];
         for (let layoutSource of this.layoutSources) {
             itemViews = itemViews.concat(this._renderLayoutSource(layoutSource));
-        }
-        if (itemViews.length === 0) {
-            this._emptyRender = true;
         }
         // console.debug('end render collection view');
 

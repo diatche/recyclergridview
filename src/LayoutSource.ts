@@ -295,6 +295,14 @@ export default class LayoutSource<
         throw new Error('Not implemented');
     }
 
+    isEqualIndexes(i1: T, i2: T): boolean {
+        return i1 === i2;
+    }
+
+    copyIndex(index: T): T {
+        return index;
+    }
+
     setItemNeedsRender(index: T) {
         let item = this.getVisibleItem(index);
         item?.ref.current?.setNeedsRender();
