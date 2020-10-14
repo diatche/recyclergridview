@@ -19,6 +19,7 @@ import {
 } from "./types";
 import {
     getLazyArray,
+    isPointInsideItemLayout,
     zeroPoint,
 } from "./util";
 import {
@@ -35,7 +36,8 @@ const kDefaultProps: Partial<LayoutSourceProps<any>> = {
 let _layoutSourceCounter = 0;
 
 export interface ILayoutUpdateInfo {
-    cancelled: boolean;
+    cancelled?: boolean;
+    needsRender?: boolean;
 }
 
 export interface LayoutSourceProps<T> {
@@ -98,6 +100,10 @@ export interface LayoutSourceProps<T> {
         item: IItem<T>;
         previous: Pick<IItem<T>, 'index' | 'contentLayout'>;
     }) => boolean;
+    /**
+     * Called after an item is created.
+     */
+    didCreateItem?: (item: IItem<T>) => void;
     /**
      * Called before an item is displayed after
      * an update or creation.
@@ -364,7 +370,11 @@ export default class LayoutSource<
         }
         
         let cancelled = false;
+        let needsRender = false;
         for (let info of this._updateInfoQueue) {
+            if (!needsRender && info?.needsRender) {
+                needsRender = true;
+            }
             if (info?.cancelled) {
                 cancelled = true;
                 break;
@@ -378,6 +388,9 @@ export default class LayoutSource<
             this.didCommitUpdate(view);
         }
         this.didEndUpdate(view);
+        if (needsRender) {
+            view.setNeedsRender();
+        }
     }
 
     /**
@@ -790,6 +803,74 @@ export default class LayoutSource<
         }
     }
 
+    /**
+     * Override to support adding items.
+     * @param item 
+     * @param view 
+     * @param options 
+     */
+    willAddItem(
+        { index }: { index: T },
+        view: Grid,
+        options?: IAnimationBaseOptions
+    ) {
+        throw new Error('Adding items is not supported');
+    }
+
+    addItem(
+        { index }: { index: T },
+        view: Grid,
+        options?: IAnimationBaseOptions
+    ): IItem<T> {
+        this.beginUpdate(view);
+        let updateInfo: ILayoutUpdateInfo | undefined;
+        try {
+            this.willAddItem({ index }, view, options);
+            let item = this.dequeueItem(index);
+            if (!item) {
+                item = this.createItem(index, view);
+                updateInfo = { needsRender: true };
+            }
+            this.updateItems(view, options);
+            this.endUpdate(view, updateInfo);
+            return item;
+        } catch (error) {
+            this.endUpdate(view, { cancelled: true });
+            throw error;
+        }
+    }
+
+    /**
+     * Override to support removing items.
+     * @param index 
+     * @param view 
+     * @param options 
+     */
+    didRemoveItem(
+        { index }: { index: T },
+        view: Grid,
+        options?: IAnimationBaseOptions
+    ) {
+        throw new Error('Removing items is not supported');
+    }
+
+    removeItem(
+        item: { index: T },
+        view: Grid,
+        options?: IAnimationBaseOptions
+    ) {
+        this.beginUpdate(view);
+        try {
+            this.queueItem(item.index);
+            this.didRemoveItem(item, view, options);
+            this.updateItems(view, options);
+            this.endUpdate(view);
+        } catch (error) {
+            this.endUpdate(view, { cancelled: true });
+            throw error;
+        }
+    }
+
     createItem(index: T, view: Grid) {
         let contentLayout = this.createItemContentLayout$();
         let viewLayout = this.createItemViewLayout$(contentLayout, view);
@@ -810,6 +891,8 @@ export default class LayoutSource<
             },
         };
         item.reuseID = this.getReuseID(index);
+
+        this.props.didCreateItem?.(item);
 
         // console.debug(`[${this.id}] created (${item.reuseID}) at ${JSON.stringify(index)}`);
         this.updateItem(item, index, { isNew: true });
@@ -921,6 +1004,21 @@ export default class LayoutSource<
         throw new Error('Not implemented');
     }
 
+    /**
+     * Override to optimise.
+     * @param p 
+     */
+    getVisibleItemAtLocation(p: IPoint, view: Grid): IItem<T> | undefined {
+        for (let i of this.visibleIndexes()) {
+            let item = this.getVisibleItem(i);
+            let contentLayout = item?.contentLayout;
+            if (contentLayout && isPointInsideItemLayout(p, contentLayout)) {
+                return item;
+            }
+        }
+        return undefined;
+    }
+
     private _dequeueItem(reuseID: string): IItem<T> | undefined {
         let queue = getLazyArray(this._itemQueues, reuseID);
         let item = queue.pop();
@@ -991,8 +1089,10 @@ export default class LayoutSource<
                         if (create) {
                             this.createItem(add, view);
                         } else {
-                            this.endUpdate(view, { cancelled: true });
-                            view.setNeedsRender();
+                            this.endUpdate(view, {
+                                cancelled: true,
+                                needsRender: true,
+                            });
                             return undefined;
                         }
                     }

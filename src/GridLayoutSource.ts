@@ -93,6 +93,11 @@ export default class GridLayoutSource extends LayoutSource<IPoint, GridLayoutSou
         }
     }
 
+    getVisibleItemAtLocation(p: IPoint, view: Grid): IItem<T> | undefined {
+        let i = this.getGridIndex(p, view, { floor: true });
+        return this.getVisibleItem(i);
+    }
+
     isEqualIndexes(i1: T, i2: T): boolean {
         return i1.x === i2.x && i1.y === i2.y;
     }

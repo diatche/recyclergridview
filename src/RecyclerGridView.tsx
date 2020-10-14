@@ -304,18 +304,20 @@ export default class RecyclerGridView extends React.PureComponent<
                     if (!panEnabled) {
                         return false;
                     }
-                    e?.preventDefault?.();
-                    this._lockScroll();
+                    // e?.preventDefault?.();
+                    // this._lockScroll();
+                    console.debug('acquire pan');
                     return true;
                 };
             };
             let panConfig: PanResponderCallbacks = {
                 onStartShouldSetPanResponder: aquire(),
                 // onStartShouldSetPanResponderCapture: aquire(),
+                // onMoveShouldSetPanResponder: () => false,
                 onMoveShouldSetPanResponder: aquire(),
                 // onMoveShouldSetPanResponderCapture: aquire(),
                 onPanResponderStart: removeDefaultCurry((e, g) => this._onBeginPan(e, g)),
-                onPanResponderMove: removeDefaultCurry((...args: any[]) => {
+                onPanResponderMove: (...args: any[]) => {
                     if (this._panDefaultPrevented) {
                         return;
                     }
@@ -326,8 +328,9 @@ export default class RecyclerGridView extends React.PureComponent<
                             useNativeDriver: this._useNativeDriver
                         }
                     )(...args);
-                }),
-                onPanResponderEnd: removeDefaultCurry((e, g) => this._onPressOut(e, g)),
+                },
+                onPanResponderEnd: (e, g) => this._onPressOut(e, g),
+                onPanResponderTerminate: (e, g) => this._onPressOut(e, g),
             };
             // Add external callbacks
             let cbKeys = Object.keys(this.props.panResponderCallbacks || {}) as (keyof PanResponderCallbacks)[];
