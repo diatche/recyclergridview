@@ -1,5 +1,5 @@
 import React from 'react';
-import { Animated, ViewProps } from 'react-native';
+import { Animated, ViewProps, StyleSheet } from 'react-native';
 import { LayoutSource } from './internal';
 import { IItem } from './types';
 
@@ -78,6 +78,7 @@ export default class ItemView extends React.Component<
         return (
             <Animated.View
                 style={[
+                    styles.container,
                     {
                         transform: [
                             {
@@ -100,3 +101,9 @@ export default class ItemView extends React.Component<
         );
     }
 }
+
+const styles = StyleSheet.create({
+    container: {
+        alignItems: 'stretch',
+    }
+});

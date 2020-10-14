@@ -12,12 +12,13 @@ import {
 import {
     forEachInstertedIndexInSet,
     isSetEqual,
+    zeroPoint,
 } from "./util";
 
 declare type T = number;
 
 export interface CustomLayoutSourceProps extends LayoutSourceProps<T> {
-    getItemLayout(index: T): Pick<IItemLayout, 'offset'> & Partial<IItemLayout>;
+    getItemLayout?: (index: T) => Pick<IItemLayout, 'offset'> & Partial<IItemLayout>;
     getVisibleIndexSet(
         visibleRange: [IPoint, IPoint],
         layoutSource: CustomLayoutSource,
@@ -38,8 +39,9 @@ export default class CustomLayoutSource extends LayoutSource<T, CustomLayoutSour
 
     getItemContentLayout(index: T): IItemLayout {
         return {
+            offset: zeroPoint(),
             size: this.itemSize,
-            ...this.props.getItemLayout(index)
+            ...this.props.getItemLayout?.(index)
         };
     }
 
