@@ -7,19 +7,19 @@ import {
 import {
     AnimatedValueDerivedInput,
     AnimatedValueXYDerivedInput,
+    IAnimatedPoint,
+    IAnimatedPointInput,
     IAnimatedValueXYInput,
     IAnimationBaseOptions,
+    ILayout,
+    IPoint,
 } from './types';
 import { zeroPoint } from './util';
 
-export function normalizeAnimatedValue<Info>(
-    value: AnimatedValueDerivedInput<Info> | undefined,
-    info: Info,
+export const normalizeAnimatedValue = (
+    value: Animated.Value | number | undefined,
     defaults?: Animated.Value,
-): Animated.Value {
-    if (typeof value === 'function') {
-        value = value(info);
-    }
+): Animated.Value => {
     if (typeof value === 'undefined') {
         return defaults || new Animated.Value(0); 
     }
@@ -32,7 +32,18 @@ export function normalizeAnimatedValue<Info>(
     throw new Error('Invalid animated value');
 }
 
-export function normalizeAnimatedValueXY<Info>(
+export function normalizeAnimatedDerivedValue<Info>(
+    value: AnimatedValueDerivedInput<Info> | undefined,
+    info: Info,
+    defaults?: Animated.Value,
+): Animated.Value {
+    if (typeof value === 'function') {
+        value = value(info);
+    }
+    return normalizeAnimatedValue(value, defaults);
+}
+
+export function normalizeAnimatedDerivedValueXY<Info>(
     point: AnimatedValueXYDerivedInput<Info> | undefined,
     info: Info,
     defaults?: IAnimatedValueXYInput | Animated.ValueXY,
@@ -60,6 +71,35 @@ export function normalizeAnimatedValueXY<Info>(
     }
     return new Animated.ValueXY(p);
 }
+
+export const normalizePartialAnimatedLayout = (
+    layout: Partial<ILayout<IAnimatedPointInput>> = {}
+): Partial<ILayout<IAnimatedPoint>> | undefined => {
+    let normLayout: Partial<ILayout<IAnimatedPoint>> | undefined;
+    let { offset, size } = layout;
+    if (offset) {
+        let { x = 0, y = 0 } = offset;
+        if (!normLayout) {
+            normLayout = {};
+        }
+        normLayout.offset = {
+            x: typeof x === 'number' ? new Animated.Value(x) : x,
+            y: typeof y === 'number' ? new Animated.Value(y) : y,
+        };
+    }
+    if (size) {
+        let { x = 0, y = 0 } = size;
+        if (!normLayout) {
+            normLayout = {};
+        }
+        normLayout.size = {
+            x: typeof x === 'number' ? new Animated.Value(x) : x,
+            y: typeof y === 'number' ? new Animated.Value(y) : y,
+        };
+    }
+
+    return normLayout;
+};
 
 export const negate$ = (x: Animated.Animated) => {
     return Animated.subtract(0, x);

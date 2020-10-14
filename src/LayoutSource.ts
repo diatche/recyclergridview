@@ -16,6 +16,7 @@ import {
     InsetEdge,
     IPoint,
     IAnimationBaseOptions,
+    IAnimatedPointInput,
 } from "./types";
 import {
     getLazyArray,
@@ -25,8 +26,9 @@ import {
 import {
     animateValueIfNeeded,
     negate$,
-    normalizeAnimatedValue,
-    normalizeAnimatedValueXY,
+    normalizePartialAnimatedLayout,
+    normalizeAnimatedDerivedValue,
+    normalizeAnimatedDerivedValueXY,
 } from './rnUtil';
 
 const kDefaultProps: Partial<LayoutSourceProps<any>> = {
@@ -43,6 +45,7 @@ export interface ILayoutUpdateInfo {
 export interface LayoutSourceProps<T> {
     /**
      * The default item size in content coordinates.
+     * The resulting view size is affected by scale.
      */
     itemSize?: AnimatedValueXYDerivedInput<Grid>;
     origin?: AnimatedValueXYDerivedInput<Grid>;
@@ -100,6 +103,11 @@ export interface LayoutSourceProps<T> {
         item: IItem<T>;
         previous: Pick<IItem<T>, 'index' | 'contentLayout'>;
     }) => boolean;
+    /**
+     * Overrides item view layout. Does not scale.
+     * Can override offset, size or both.
+     */
+    getItemViewLayout?: (index: T, view: Grid) => Partial<ILayout<IAnimatedPointInput>> | undefined;
     /**
      * Called after an item is created.
      */
@@ -203,7 +211,7 @@ export default class LayoutSource<
         let needsForcedUpdate = false;
         let sub = '';
 
-        this.itemSize$ = normalizeAnimatedValueXY(this.props.itemSize, view);
+        this.itemSize$ = normalizeAnimatedDerivedValueXY(this.props.itemSize, view);
         this._itemSize = {
             // @ts-ignore: _value is private
             x: this.itemSize$.x._value || 0,
@@ -216,7 +224,7 @@ export default class LayoutSource<
         });
         this._animatedSubscriptions[sub] = this.itemSize$;
 
-        this.origin$ = normalizeAnimatedValueXY(this.props.origin, view);
+        this.origin$ = normalizeAnimatedDerivedValueXY(this.props.origin, view);
         this._origin = {
             // @ts-ignore: _value is private
             x: this.origin$.x._value || 0,
@@ -229,7 +237,7 @@ export default class LayoutSource<
         });
         this._animatedSubscriptions[sub] = this.origin$;
 
-        this.scale$ = normalizeAnimatedValueXY(this.props.scale, view, this._scale);
+        this.scale$ = normalizeAnimatedDerivedValueXY(this.props.scale, view, this._scale);
         this._scale = {
             // @ts-ignore: _value is private
             x: this.scale$.x._value || 0,
@@ -244,6 +252,7 @@ export default class LayoutSource<
             if (p.x === this._scale.x && p.y === this._scale.y) {
                 return;
             }
+            // TODO: Reload all items if scale changes sign.
             this._scale = p;
             this.setNeedsUpdate(view);
         });
@@ -251,7 +260,7 @@ export default class LayoutSource<
 
         kInsetKeys.forEach(insetKey => {
             let currentInset$ = this.insets$[insetKey];
-            let inset$ = normalizeAnimatedValue(this.props.insets?.[insetKey], view, currentInset$);
+            let inset$ = normalizeAnimatedDerivedValue(this.props.insets?.[insetKey], view, currentInset$);
             if (currentInset$ !== inset$) {
                 // Modify animated value
                 this.insets$[insetKey] = inset$;
@@ -741,26 +750,8 @@ export default class LayoutSource<
         throw new Error('Not implemented');
     }
 
-    getItemViewLayout(contentLayout: ILayout<IPoint>, view: Grid): IItemLayout {
-        let scale = this.getScale(view);
-        let layout: ILayout<IPoint> = {
-            offset: this.getContainerLocation(contentLayout.offset, view),
-            size: {
-                x: contentLayout.size.x * scale.x,
-                y: contentLayout.size.y * scale.y,
-            }
-        };
-        if (scale.x < 0) {
-            let widthOffset = layout.size.x;
-            layout.offset.x = layout.offset.x + widthOffset;
-            layout.size.x = -layout.size.x;
-        }
-        if (scale.y < 0) {
-            let heightOffset = layout.size.y;
-            layout.offset.y = layout.offset.y + heightOffset;
-            layout.size.y = -layout.size.y;
-        }
-        return layout;
+    getItemViewLayout$(index: T, view: Grid): Partial<ILayout<IAnimatedPointInput>> | undefined {
+        return this.props.getItemViewLayout?.(index, view);
     }
 
     createItemContentLayout$(): ILayout<MutableAnimatedPoint> {
@@ -770,25 +761,33 @@ export default class LayoutSource<
         };
     }
 
-    createItemViewLayout$(contentLayout$: ILayout<MutableAnimatedPoint>, view: Grid): ILayout<IAnimatedPoint> {
+    createItemViewLayout$(
+        contentLayout$: ILayout<MutableAnimatedPoint>,
+        view: Grid,
+        overrides: Partial<ILayout<IAnimatedPoint>> = {}
+    ): ILayout<IAnimatedPoint> {
         let scale$ = this.getScale$(view);
         let layout: ILayout<IAnimatedPoint> = {
-            offset: this.getContainerLocation$(contentLayout$.offset, view),
-            size: {
+            offset: overrides.offset || this.getContainerLocation$(contentLayout$.offset, view),
+            size: overrides.size || {
                 x: Animated.multiply(contentLayout$.size.x, scale$.x),
                 y: Animated.multiply(contentLayout$.size.y, scale$.y),
             }
         };
         let scale = this.getScale(view);
         if (scale.x < 0) {
-            let widthOffset = layout.size.x;
-            layout.offset.x = Animated.add(layout.offset.x, widthOffset);
-            layout.size.x = negate$(layout.size.x);
+            if (!overrides.size) {
+                let widthOffset = layout.size.x;
+                layout.offset.x = Animated.add(layout.offset.x, widthOffset);
+                layout.size.x = negate$(layout.size.x);
+            }
         }
         if (scale.y < 0) {
-            let heightOffset = layout.size.y;
-            layout.offset.y = Animated.add(layout.offset.y, heightOffset);
-            layout.size.y = negate$(layout.size.y);
+            if (!overrides.size) {
+                let heightOffset = layout.size.y;
+                layout.offset.y = Animated.add(layout.offset.y, heightOffset);
+                layout.size.y = negate$(layout.size.y);
+            }
         }
         return layout;
     }
@@ -873,7 +872,14 @@ export default class LayoutSource<
 
     createItem(index: T, view: Grid) {
         let contentLayout = this.createItemContentLayout$();
-        let viewLayout = this.createItemViewLayout$(contentLayout, view);
+        let overrides = normalizePartialAnimatedLayout(
+            this.getItemViewLayout$(index, view)
+        );
+        let viewLayout = this.createItemViewLayout$(
+            contentLayout,
+            view,
+            overrides
+        );
         
         let item: IItem<T> = {
             index,
@@ -908,10 +914,10 @@ export default class LayoutSource<
     ): Animated.CompositeAnimation | undefined {
         let previousContentLayout = item.contentLayout;
         let newContentLayout = this.getItemContentLayout(index);
-        if (newContentLayout.size.x <= 0 || newContentLayout.size.y <= 0) {
-            console.warn(`Ignoring invalid item size: ${JSON.stringify(newContentLayout.size)}`);
-            newContentLayout.size = previousContentLayout.size;
-        }
+        // if (newContentLayout.size.x <= 0 || newContentLayout.size.y <= 0) {
+        //     console.warn(`Ignoring invalid item size: ${JSON.stringify(newContentLayout.size)}`);
+        //     newContentLayout.size = previousContentLayout.size;
+        // }
         item.index = index;
         item.contentLayout = {
             ...item.contentLayout,

@@ -53,6 +53,11 @@ export interface IAnimatedPoint {
     y: Animated.Value | Animated.AnimatedInterpolation;
 }
 
+export interface IAnimatedPointInput {
+    x: number | Animated.Value | Animated.AnimatedInterpolation;
+    y: number | Animated.Value | Animated.AnimatedInterpolation;
+}
+
 export type MutableAnimatedPoint = Animated.ValueXY | {
     x: Animated.Value;
     y: Animated.Value;

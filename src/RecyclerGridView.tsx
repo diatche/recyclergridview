@@ -28,7 +28,7 @@ import {
 import {
     concatFunctions,
     negate$,
-    normalizeAnimatedValueXY,
+    normalizeAnimatedDerivedValueXY,
     removeDefaultCurry,
     safeFunction,
 } from "./rnUtil";
@@ -216,7 +216,7 @@ export default class RecyclerGridView extends React.PureComponent<
         });
         this._animatedSubscriptions[sub] = this.containerOffset$;
 
-        this.scale$ = normalizeAnimatedValueXY(this.props.scale, this, { x: 1, y: 1});
+        this.scale$ = normalizeAnimatedDerivedValueXY(this.props.scale, this, { x: 1, y: 1});
         this._scale = {
             // @ts-ignore: _value is private
             x: this.scale$.x._value || 0,
@@ -231,12 +231,13 @@ export default class RecyclerGridView extends React.PureComponent<
             if (p.x === this._scale.x && p.y === this._scale.y) {
                 return;
             }
+            // TODO: Reload all items if scale changes sign.
             this._scale = p;
             this.didChangeScale();
         });
         this._animatedSubscriptions[sub] = this.scale$;
 
-        this.anchor$ = normalizeAnimatedValueXY(this.props.anchor, this);
+        this.anchor$ = normalizeAnimatedDerivedValueXY(this.props.anchor, this);
         this._anchor = {
             // @ts-ignore: _value is private
             x: this.anchor$.x._value || 0,
@@ -252,7 +253,7 @@ export default class RecyclerGridView extends React.PureComponent<
         });
         this._animatedSubscriptions[sub] = this.anchor$;
 
-        this._locationOffsetBase$ = normalizeAnimatedValueXY(this.props.location, this);
+        this._locationOffsetBase$ = normalizeAnimatedDerivedValueXY(this.props.location, this);
         this._locationOffsetBase = {
             // @ts-ignore: _value is private
             x: this._locationOffsetBase$.x._value || 0,
