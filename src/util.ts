@@ -3,6 +3,7 @@ import {
     AxisLabel,
     AxisType,
     Direction,
+    IItemLayout,
     ILayout,
     IPoint,
 } from './types';
@@ -185,6 +186,13 @@ export function * forEachInstertedPointInRange(
 
     return undefined;
 }
+
+export const isPointInsideItemLayout = (p: IPoint, layout: IItemLayout): boolean => {
+    if (p.x < layout.offset.x || p.y < layout.offset.y) {
+        return false;
+    }
+    return p.x <= layout.offset.x + layout.size.x && p.y <= layout.offset.y + layout.size.y;
+};
 
 export function iterateAll<T>(iterable: Iterable<T>): T[] {
     let values: T[] = [];

@@ -5,8 +5,10 @@ import {
     RecyclerGridView as Grid,
 } from "./internal";
 import {
+    IAnimationBaseOptions,
     IItem,
     IItemUpdate,
+    IPoint,
 } from "./types";
 import {
     emptyRange,
@@ -85,6 +87,54 @@ export default class FlatLayoutSource extends LayoutSource<T, UniformLayoutSourc
             yield i;
         }
     }
+    
+    getVisibleItemAtLocation(p: IPoint, view: Grid): IItem<T> | undefined {
+        let i = this.getGridIndex(p, view, { floor: true });
+        let axis = horizontalBooleanToAxis(this.horizontal);
+        return this.getVisibleItem(i[axis]);
+    }
+
+    willAddItem(
+        item: IItem<T>,
+        view: Grid,
+        options?: IAnimationBaseOptions
+    ) {
+        // Shift indexes of visible items
+        let visibleRange = this.pendingVisibleRange || this.visibleRange;
+        for (let i = visibleRange[1] - 1; i >= item.index; i--) {
+            let item = this.visibleItems[i];
+            if (item) {
+                this.updateItem(item, i + 1, options);
+            }
+        }
+        if (item.index < this.visibleRange[0]) {
+            this.visibleRange[0] += 1;
+        }
+        this.visibleRange[1] += 1;
+    }
+
+    didRemoveItem(
+        { index }: { index: T },
+        view: Grid,
+        options?: IAnimationBaseOptions
+    ) {
+        // Shift indexes of visible items
+        let visibleRange = this.pendingVisibleRange || this.visibleRange;
+        if (visibleRange[1] <= visibleRange[0]) {
+            return;
+        }
+        for (let i = index; i < visibleRange[1] - 1; i++) {
+            let item = this.visibleItems[i + 1];
+            if (item) {
+                this.updateItem(item, i, options);
+            }
+        }
+        delete this.visibleItems[this.visibleRange[1] - 1];
+        if (index < this.visibleRange[0]) {
+            this.visibleRange[0] -= 1;
+        }
+        this.visibleRange[1] -= 1;
+    }
 
     shouldUpdate(view: Grid) {
         let pendingVisibleRange = this.getVisibleRange(view);
@@ -94,25 +144,25 @@ export default class FlatLayoutSource extends LayoutSource<T, UniformLayoutSourc
         );
     }
 
-    beginUpdate(view: Grid) {
-        super.beginUpdate(view);
+    didBeginUpdate(view: Grid) {
+        super.didBeginUpdate(view);
         this.pendingVisibleRange = this.getVisibleRange(view);
         // console.debug(`[${this.id}] visible items: ` + Object.keys(this.visibleItems).length);
         // console.debug(`[${this.id}] currentVisibleRange: ` + JSON.stringify(this.visibleRange));
         // console.debug(`[${this.id}] pendingVisibleRange: ` + JSON.stringify(this.pendingVisibleRange));
     }
 
-    commitUpdate(view: Grid) {
+    didCommitUpdate(view: Grid) {
         let pendingVisibleRange = this.pendingVisibleRange;
         if (pendingVisibleRange) {
             this.visibleRange = pendingVisibleRange;
         }
-        super.commitUpdate(view);
+        super.didCommitUpdate(view);
     }
 
-    endUpdate(view: Grid) {
+    didEndUpdate(view: Grid) {
         this.pendingVisibleRange = undefined;
-        super.endUpdate(view);
+        super.didEndUpdate(view);
     }
 
     getVisibleRange(view: Grid): [T, T] {

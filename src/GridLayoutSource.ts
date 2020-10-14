@@ -93,6 +93,11 @@ export default class GridLayoutSource extends LayoutSource<IPoint, GridLayoutSou
         }
     }
 
+    getVisibleItemAtLocation(p: IPoint, view: Grid): IItem<T> | undefined {
+        let i = this.getGridIndex(p, view, { floor: true });
+        return this.getVisibleItem(i);
+    }
+
     isEqualIndexes(i1: T, i2: T): boolean {
         return i1.x === i2.x && i1.y === i2.y;
     }
@@ -109,24 +114,24 @@ export default class GridLayoutSource extends LayoutSource<IPoint, GridLayoutSou
         );
     }
 
-    beginUpdate(view: Grid) {
-        super.beginUpdate(view);
+    didBeginUpdate(view: Grid) {
+        super.didBeginUpdate(view);
         this.pendingVisibleRange = this.getVisibleGridIndexRange(view);
         // console.debug(`[${this.id}] visible items: ${Object.keys(this.visibleItems).length} (ok: ${Object.values(this.visibleItems).filter(item => !!item.ref?.current).length})`);
         // console.debug(`[${this.id}] currentVisibleRange: ` + JSON.stringify(this.visibleRange));
         // console.debug(`[${this.id}] pendingVisibleRange: ` + JSON.stringify(this.pendingVisibleRange));
     }
 
-    commitUpdate(view: Grid) {
+    didCommitUpdate(view: Grid) {
         let pendingVisibleRange = this.pendingVisibleRange;
         if (pendingVisibleRange) {
             this.visibleRange = pendingVisibleRange;
         }
-        super.commitUpdate(view);
+        super.didCommitUpdate(view);
     }
 
-    endUpdate(view: Grid) {
+    didEndUpdate(view: Grid) {
         this.pendingVisibleRange = undefined;
-        super.endUpdate(view);
+        super.didEndUpdate(view);
     }
 }

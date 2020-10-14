@@ -94,26 +94,26 @@ export default class CustomLayoutSource extends LayoutSource<T, CustomLayoutSour
         );
     }
 
-    beginUpdate(view: Grid) {
-        super.beginUpdate(view);
+    didBeginUpdate(view: Grid) {
+        super.didBeginUpdate(view);
         this.pendingVisibleIndexSet = this.getVisibleIndexSet(view);
         // console.debug(`[${this.id}] visible items: ` + Object.keys(this.visibleItems).length);
         // console.debug(`[${this.id}] currentVisibleIndexSet: ` + JSON.stringify(Array.from(this.visibleIndexSet)));
         // console.debug(`[${this.id}] pendingVisibleIndexSet: ` + JSON.stringify(Array.from(this.pendingVisibleIndexSet)));
     }
 
-    commitUpdate(view: Grid) {
+    didCommitUpdate(view: Grid) {
         let pendingVisibleIndexSet = this.pendingVisibleIndexSet;
         if (pendingVisibleIndexSet) {
             this.visibleIndexSet = pendingVisibleIndexSet;
         }
         // console.debug(`[${this.id}] commit update with item layouts: ` + JSON.stringify(Object.values(this.visibleItems).map(item => item.layout), null, 2));
-        super.commitUpdate(view);
+        super.didCommitUpdate(view);
     }
 
-    endUpdate(view: Grid) {
+    didEndUpdate(view: Grid) {
         this.pendingVisibleIndexSet = undefined;
-        super.endUpdate(view);
+        super.didEndUpdate(view);
     }
 
     getVisibleIndexSet(view: Grid): Set<T> {
