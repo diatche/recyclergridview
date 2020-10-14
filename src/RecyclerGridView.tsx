@@ -306,14 +306,13 @@ export default class RecyclerGridView extends React.PureComponent<
                     }
                     // e?.preventDefault?.();
                     // this._lockScroll();
-                    console.debug('acquire pan');
+                    // console.debug('acquire pan');
                     return true;
                 };
             };
             let panConfig: PanResponderCallbacks = {
                 onStartShouldSetPanResponder: aquire(),
                 // onStartShouldSetPanResponderCapture: aquire(),
-                // onMoveShouldSetPanResponder: () => false,
                 onMoveShouldSetPanResponder: aquire(),
                 // onMoveShouldSetPanResponderCapture: aquire(),
                 onPanResponderStart: removeDefaultCurry((e, g) => this._onBeginPan(e, g)),
