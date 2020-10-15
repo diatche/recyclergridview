@@ -50,6 +50,20 @@ export interface LayoutSourceProps<T> {
     itemSize?: AnimatedValueXYDerivedInput<Grid>;
     origin?: AnimatedValueXYDerivedInput<Grid>;
     /**
+     * Where to place the origin for each item.
+     * 
+     * An item origin of `{ x: 0, y: 0 }` (by default),
+     * will scale the item about the top left corner
+     * (if both scales are positive) and in the bottom
+     * left corner if the y scale is negative.
+     * 
+     * An item origin of `{ x: 1, y: 1 }` (by default),
+     * will scale the item about the bottom right corner
+     * (if both scales are positive) and in the top
+     * right corner if the y scale is negative.
+     */
+    itemOrigin?: AnimatedValueXYDerivedInput<Grid>;
+    /**
      * Set to `{ x: 1, y: 1 }` by default.
      * 
      * To add a parallax effect, set component
@@ -66,6 +80,7 @@ export interface LayoutSourceProps<T> {
     /**
      * The subviews "stick" to the specified edge.
      * The `origin` determines which location "sticks".
+     * Remeber to set `itemOrigin` accordingly.
      * To offset from the edge, use the corresponding edge
      * in `insets`.
      **/
@@ -107,7 +122,11 @@ export interface LayoutSourceProps<T> {
      * Overrides item view layout. Does not scale.
      * Can override offset, size or both.
      */
-    getItemViewLayout?: (index: T, view: Grid) => Partial<ILayout<IAnimatedPointInput>> | undefined;
+    getItemViewLayout?: (
+        index: T,
+        view: Grid,
+        layoutSource: LayoutSource,
+    ) => Partial<ILayout<IAnimatedPointInput>> | undefined;
     /**
      * Called after an item is created.
      */
@@ -142,11 +161,13 @@ export default class LayoutSource<
     readonly id: string;
     itemSize$: Animated.ValueXY;
     origin$: Animated.ValueXY;
+    itemOrigin$: Animated.ValueXY;
     scale$: Animated.ValueXY;
     insets$: IInsets<Animated.Value>;
 
     private _itemSize: IPoint;
     private _origin: IPoint;
+    private _itemOrigin: IPoint;
     private _scale: IPoint;
     private _insets: IInsets<number>;
     private _zIndex = 0;
@@ -169,6 +190,9 @@ export default class LayoutSource<
 
         this.origin$ = new Animated.ValueXY();
         this._origin = zeroPoint();
+
+        this.itemOrigin$ = new Animated.ValueXY();
+        this._itemOrigin = zeroPoint();
 
         this._scale = { x: 1, y: 1 };
         this.scale$ = new Animated.ValueXY({ ...this._scale });
@@ -236,6 +260,19 @@ export default class LayoutSource<
             this.setNeedsUpdate(view);
         });
         this._animatedSubscriptions[sub] = this.origin$;
+
+        this.itemOrigin$ = normalizeAnimatedDerivedValueXY(this.props.itemOrigin, view);
+        this._itemOrigin = {
+            // @ts-ignore: _value is private
+            x: this.itemOrigin$.x._value || 0,
+            // @ts-ignore: _value is private
+            y: this.itemOrigin$.y._value || 0,
+        };
+        sub = this.itemOrigin$.addListener(p => {
+            this._itemOrigin = p;
+            this.setNeedsUpdate(view);
+        });
+        this._animatedSubscriptions[sub] = this.itemOrigin$;
 
         this.scale$ = normalizeAnimatedDerivedValueXY(this.props.scale, view, this._scale);
         this._scale = {
@@ -701,18 +738,13 @@ export default class LayoutSource<
             round?: boolean;
         }
     ): IPoint {
-        let { itemSize } = this;
-        if (itemSize.x <= 0 || itemSize.y <= 0) {
+        if (this._itemSize.x == 0 || this._itemSize.y == 0) {
             return zeroPoint();
         }
-        // return {
-        //     x: point.x / itemSize.x,
-        //     y: point.y / itemSize.y,
-        // };
         let offset = this.getLocationInsetOffset(view);
         let i = {
-            x: (point.x - offset.x) / itemSize.x,
-            y: (point.y - offset.y) / itemSize.y,
+            x: (point.x - offset.x) / this._itemSize.x + this._itemSize.x * this._itemOrigin.x,
+            y: (point.y - offset.y) / this._itemSize.y + this._itemSize.y * this._itemOrigin.y,
         };
         if (options) {
             if (options.floor) {
@@ -751,7 +783,7 @@ export default class LayoutSource<
     }
 
     getItemViewLayout$(index: T, view: Grid): Partial<ILayout<IAnimatedPointInput>> | undefined {
-        return this.props.getItemViewLayout?.(index, view);
+        return this.props.getItemViewLayout?.(index, view, this);
     }
 
     createItemContentLayout$(): ILayout<MutableAnimatedPoint> {
@@ -774,6 +806,17 @@ export default class LayoutSource<
                 y: Animated.multiply(contentLayout$.size.y, scale$.y),
             }
         };
+
+        // Apply item origin
+        layout.offset.x = Animated.subtract(
+            layout.offset.x,
+            Animated.multiply(this.itemOrigin$.x, layout.size.x)
+        );
+        layout.offset.y = Animated.subtract(
+            layout.offset.y,
+            Animated.multiply(this.itemOrigin$.y, layout.size.y)
+        );
+
         let scale = this.getScale(view);
         if (scale.x < 0) {
             if (!overrides.size) {
