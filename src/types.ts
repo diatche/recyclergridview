@@ -88,6 +88,11 @@ export interface IItem<T> {
     zIndex?: number;
     contentLayout: IItemLayout;
     animated: IAnimatedItemLayout;
+    /**
+     * If `true`, the item will fade in when
+     * rendered. This value is set automatically.
+     */
+    showAnimation: boolean;
 }
 
 export interface IInsets<T=number> {

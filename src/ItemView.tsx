@@ -29,20 +29,10 @@ export default class ItemView extends React.Component<
     }
 
     componentDidMount() {
-        let { item, layoutSource, useNativeDriver } = this.props;
         // console.debug(`item ${JSON.stringify(item.index)} mounted`);
-
-        let { showDuration = 0 } = layoutSource.props;
-        if (showDuration > 0) {
-            // Animate opacity to reduce jarring effect
-            // after render.
-            this._showAnimation = Animated.timing(item.animated.opacity, {
-                toValue: 1,
-                duration: layoutSource.props.showDuration,
-                useNativeDriver,
-            });
-            this._showAnimation.start();
-        } // Else, no duration: opacity set in item update
+        if (this.props.item.showAnimation) {
+            this.fadeIn();
+        }
     }
 
     componentWillUnmount() {
@@ -58,6 +48,21 @@ export default class ItemView extends React.Component<
             nextState.renderNonce !== this.state.renderNonce ||
             nextProps.item !== this.props.item
         );
+    }
+
+    fadeIn() {
+        let { item, layoutSource, useNativeDriver } = this.props;
+        let { showDuration = 0 } = layoutSource.props;
+        if (showDuration > 0) {
+            // Animate opacity to reduce jarring effect
+            // after render.
+            this._showAnimation = Animated.timing(item.animated.opacity, {
+                toValue: 1,
+                duration: layoutSource.props.showDuration,
+                useNativeDriver,
+            });
+            this._showAnimation.start();
+        } // Else, no duration: opacity set in item update
     }
 
     setNeedsRender() {
