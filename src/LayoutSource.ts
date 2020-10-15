@@ -31,12 +31,6 @@ import {
     normalizeAnimatedDerivedValueXY,
 } from './rnUtil';
 
-/**
- * After which time interval to fade in
- * reused items.
- **/
-const kAnimateShowReusedThresholdMS = 50;
-
 const kDefaultProps: Partial<LayoutSourceProps<any>> = {
     showDuration: 150,
 };
@@ -1018,21 +1012,16 @@ export default class LayoutSource<
             }
         }
 
-        item.showAnimation = false;
-        // if (this.showDuration <= 0) {
-        //     item.showAnimation = false;
-        // } else {
-        //     // Determine when to show item:
-        //     let {
-        //         created: isNew = false,
-        //         dequeued: wasDequeued = false,
-        //     } = options || {};
-        //     item.showAnimation = isNew;
-        //     if (wasDequeued) {
-        //         let updateDelay = new Date().valueOf() - this.updateStartTimestamp;
-        //         item.showAnimation = updateDelay > kAnimateShowReusedThresholdMS;
-        //     }
-        // }
+        // item.showAnimation = false;
+        if (this.showDuration <= 0) {
+            item.showAnimation = false;
+        } else {
+            // Determine when to show item:
+            let {
+                created = false,
+            } = options || {};
+            item.showAnimation = created;
+        }
         
         if (item.showAnimation) {
             // Animate here if updating, otherwise
