@@ -170,6 +170,7 @@ export default class RecyclerGridView extends React.PureComponent<
     private _containerOffset: IPoint;
     private _itemViewCounter = 0;
     private _needsRender = true;
+    private _needsFirstRender = true;
     private _animatedSubscriptions: { [id: string]: Animated.Value | Animated.ValueXY } = {};
     private _memoryWarningListener?: () => void;
     private _scrollLocked$ = new Animated.Value(0);
@@ -1030,13 +1031,18 @@ export default class RecyclerGridView extends React.PureComponent<
     render() {
         // console.debug('render recycler grid view');
         // console.debug('begin render recycler grid view');
+
+        let itemViews: React.ReactNode[] = [];
+        if (!this._needsFirstRender) {
+            for (let layoutSource of this.layoutSources) {
+                itemViews = itemViews.concat(this._renderLayoutSource(layoutSource));
+            }
+        } // Else: wait for first empty render to get layout.
+        
+        this._needsFirstRender = false;
         this._needsRender = false;
         this._resetScheduleUpdate();
 
-        let itemViews: React.ReactNode[] = [];
-        for (let layoutSource of this.layoutSources) {
-            itemViews = itemViews.concat(this._renderLayoutSource(layoutSource));
-        }
         // console.debug('end render recycler grid view');
 
         return (
