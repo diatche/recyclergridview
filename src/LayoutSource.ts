@@ -44,7 +44,6 @@ const kDefaultProps: Partial<LayoutSourceProps<any>> = {
 let _layoutSourceCounter = 0;
 
 export interface ILayoutUpdateInfo {
-    cancelled?: boolean;
     needsRender?: boolean;
 }
 
@@ -378,6 +377,10 @@ export default class LayoutSource<
     }
 
     setNeedsUpdate(view: Grid, options?: { force?: boolean }) {
+        if (this.isUpdating) {
+            return;
+        }
+
         let { force = false } = options || {};
         if (!force && view.needsRender) {
             // View will render anyway
@@ -386,6 +389,10 @@ export default class LayoutSource<
         if (force || this.shouldUpdate(view)) {
             this.updateItems(view);
         }
+    }
+
+    get isUpdating() {
+        return this._updateDepth > 0;
     }
 
     /**
@@ -428,24 +435,14 @@ export default class LayoutSource<
             return;
         }
         
-        let cancelled = false;
         let needsRender = false;
         for (let info of this._updateInfoQueue) {
             if (!needsRender && info?.needsRender) {
                 needsRender = true;
             }
-            if (info?.cancelled) {
-                cancelled = true;
-                break;
-            }
         }
         this._updateInfoQueue = [];
 
-        if (cancelled) {
-            this.didCancelUpdate(view);
-        } else {
-            this.didCommitUpdate(view);
-        }
         this.didEndUpdate(view);
         if (needsRender) {
             view.setNeedsRender();
@@ -464,29 +461,7 @@ export default class LayoutSource<
     }
 
     /**
-     * Called when an update is commited.
-     * 
-     * Subclasses must call the super implementation last.
-     * Do not call this method directly.
-     * @param view 
-     */
-    didCommitUpdate(view: Grid) {
-        // console.debug(`[${this.id}] ` + 'commitUpdate');
-    }
-
-    /**
-     * Called when an update is cancelled.
-     * 
-     * Subclasses must call the super implementation last.
-     * Do not call this method directly.
-     * @param view 
-     */
-    didCancelUpdate(view: Grid) {
-        // console.debug(`[${this.id}] ` + 'cancelUpdate');
-    }
-
-    /**
-     * Called when an update is committed or cancelled.
+     * Called when an update has ended.
      * 
      * Subclasses must call the super implementation last.
      * Do not call this method directly.
@@ -890,7 +865,7 @@ export default class LayoutSource<
             this.endUpdate(view, updateInfo);
             return item;
         } catch (error) {
-            this.endUpdate(view, { cancelled: true });
+            this.endUpdate(view, updateInfo);
             throw error;
         }
     }
@@ -919,10 +894,8 @@ export default class LayoutSource<
             this.queueItem(item.index);
             this.didRemoveItem(item, view, options);
             this.updateItems(view, options);
+        } finally {
             this.endUpdate(view);
-        } catch (error) {
-            this.endUpdate(view, { cancelled: true });
-            throw error;
         }
     }
 
@@ -940,6 +913,7 @@ export default class LayoutSource<
         let item: IItem<T> = {
             index,
             ref: view.createItemViewRef(),
+            viewKey: view.createItemViewKey(),
             zIndex: this.zIndex,
             contentLayout: {
                 offset: zeroPoint(),
@@ -1035,7 +1009,7 @@ export default class LayoutSource<
             }
         }
 
-            if (this.showDuration <= 0) {
+        if (this.showDuration <= 0) {
             item.showAnimation = false;
         } else {
             // Determine when to show item:
@@ -1047,16 +1021,14 @@ export default class LayoutSource<
             if (!item.showAnimation || wasDequeued) {
                 // Item was updated
                 let updateDelay = new Date().valueOf() - this.updateStartTimestamp;
-                console.debug('updateDelay: ' + updateDelay);
                 item.showAnimation = updateDelay > kAnimateShowReusedThresholdMS;
             }
-            }
+        }
         
         if (item.showAnimation) {
             // Animate here if updating, otherwise
             // the animation will start when the item
             // view is mounted.
-            item.ref.current && console.debug('animating update fade in');
             item.ref.current?.fadeIn();
         } else {
             // Show immediately
@@ -1098,6 +1070,10 @@ export default class LayoutSource<
         return undefined;
     }
 
+    allQueuedItems() {
+        return this._itemQueues;
+    }
+
     private _dequeueItem(reuseID: string): IItem<T> | undefined {
         let queue = getLazyArray(this._itemQueues, reuseID);
         let item = queue.pop();
@@ -1105,7 +1081,7 @@ export default class LayoutSource<
             console.error(`Dequeued an item from queue with reuseID "${reuseID}" with a different reuseID "${item.reuseID}"`);
         }
         // if (item) {
-        //     console.debug(`[${this.id}] dequeued ${reuseID} (size: ${queue.length})`);
+        //     console.debug(`[${this.id}] dequeued ${reuseID} (from: ${JSON.stringify(item.index)}, size: ${queue.length})`);
         // } else {
         //     console.debug(`[${this.id}] queue empty (${reuseID})`);
         // }
@@ -1136,48 +1112,36 @@ export default class LayoutSource<
     updateItems(
         view: Grid,
         options?: {
-            queue?: boolean;
-            dequeue?: boolean;
-            create?: boolean;
             update?: boolean;
+            prerender?: boolean;
         } & IAnimationBaseOptions
     ): Animated.CompositeAnimation | undefined {
         let {
-            queue = true,
-            dequeue = true,
-            create = false,
             update = false,
+            prerender = view.needsRender,
             ...animationOptions
         } = options || {};
-        let dequeueOptions = { prerender: create };
+        let dequeueOptions = { prerender };
         let animations: Animated.CompositeAnimation[] = [];
         let animation: Animated.CompositeAnimation | undefined;
+        let needsRender = false;
 
-        // console.debug(`[${this.id}] ` + 'updateItems');
+        // console.debug(`[${this.id}] updateItems (prerender: ${prerender})`);
         this.beginUpdate(view);
         try {
             for (let { add, remove } of this.itemUpdates()) {
-                if (queue && typeof remove !== 'undefined') {
+                if (typeof remove !== 'undefined') {
                     // Item hidden
-                    // console.debug(`[${this.id}] ` + 'hide: ' + JSON.stringify(remove));
+                    // console.debug(`[${this.id}] hide: ${JSON.stringify(remove)}`);
                     this.queueItem(remove);
                 } else if (typeof add !== 'undefined') {
                     // Item shown
-                    // console.debug(`[${this.id}] ` + 'show: ' + JSON.stringify(add));
-                    if (!dequeue || !this.dequeueItem(add, dequeueOptions)) {
-                        if (create) {
-                            this.createItem(add, view);
-                        } else {
-                            this.endUpdate(view, {
-                                cancelled: true,
-                                needsRender: true,
-                            });
-                            return undefined;
-                        }
+                    // console.debug(`[${this.id}] show: ${JSON.stringify(add)}`);
+                    if (!this.dequeueItem(add, dequeueOptions)) {
+                        this.createItem(add, view);
+                        needsRender = !prerender;
+                        // console.debug(`[${this.id}] need to render ${JSON.stringify(add)}`);
                     }
-                    // else {
-                    //     // console.debug(`[${this.id}] ` + 'dequeued: ' + JSON.stringify(add));
-                    // }
                 }
             }
             let itemAnimationOptions = {
@@ -1196,11 +1160,10 @@ export default class LayoutSource<
                     }
                 }
             }
-            this.endUpdate(view);
         } catch (error) {
             console.error('Error during update: ' + error?.message || error);
-            this.endUpdate(view, { cancelled: true });
         }
+        this.endUpdate(view, { needsRender });
 
         animation = undefined;
         if (animations.length !== 0) {
@@ -1224,7 +1187,7 @@ export default class LayoutSource<
         if (item && !itemNode && !options?.prerender) {
             // We have an existing item to reuse, but have neither a rendered react node
             // nor we are about to render new nodes.
-            // !itemNode && console.debug(`Item ${JSON.stringify(item.index)} has no view node on dequeue`);
+            // !itemNode && console.debug(`[${this.id}] item ${JSON.stringify(item.index)} has no view node on dequeue`);
             item = undefined;
         }
         if (item) {

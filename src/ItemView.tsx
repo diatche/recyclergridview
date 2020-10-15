@@ -29,14 +29,14 @@ export default class ItemView extends React.Component<
     }
 
     componentDidMount() {
-        // console.debug(`item ${JSON.stringify(item.index)} mounted`);
+        // console.debug(`[${this.props.layoutSource.id}] item ${JSON.stringify(this.props.item.index)} mounted`);
         if (this.props.item.showAnimation) {
             this.fadeIn();
         }
     }
 
     componentWillUnmount() {
-        // console.debug(`item ${JSON.stringify(this.props.item.index)} unmounted`);
+        // console.debug(`[${this.props.layoutSource.id}] item ${JSON.stringify(this.props.item.index)} unmounted`);
         this._showAnimation?.stop();
     }
 

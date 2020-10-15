@@ -78,7 +78,7 @@ export interface IItem<T> {
     index: T;
     reuseID?: string;
     ref: React.RefObject<ItemView>;
-    viewKey?: string;
+    viewKey: string;
     /**
      * Setting the z-index here will override
      * the layout source's setting for this item.

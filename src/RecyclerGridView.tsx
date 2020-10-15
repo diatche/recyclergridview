@@ -1028,8 +1028,8 @@ export default class RecyclerGridView extends React.PureComponent<
     }
 
     render() {
-        // console.debug('render collection view');
-        // console.debug('begin render collection view');
+        // console.debug('render recycler grid view');
+        // console.debug('begin render recycler grid view');
         this._needsRender = false;
         this._resetScheduleUpdate();
 
@@ -1037,7 +1037,7 @@ export default class RecyclerGridView extends React.PureComponent<
         for (let layoutSource of this.layoutSources) {
             itemViews = itemViews.concat(this._renderLayoutSource(layoutSource));
         }
-        // console.debug('end render collection view');
+        // console.debug('end render recycler grid view');
 
         return (
             <Animated.View
@@ -1093,6 +1093,10 @@ export default class RecyclerGridView extends React.PureComponent<
         return React.createRef<ItemView>();
     }
 
+    createItemViewKey(): string {
+        return String(++this._itemViewCounter);
+    }
+
     private _updateLayoutSources() {
         for (let layoutSource of this.layoutSources) {
             this._updateLayoutSource(layoutSource);
@@ -1101,7 +1105,7 @@ export default class RecyclerGridView extends React.PureComponent<
 
     private _updateLayoutSource<T>(layoutSource: LayoutSource<T>) {
         // console.debug(`[${layoutSource.id}] begin prerender`);
-        layoutSource.updateItems(this, { create: true });
+        layoutSource.updateItems(this, { prerender: true });
         // console.debug(`[${layoutSource.id}] end prerender`);
     }
 
@@ -1111,35 +1115,47 @@ export default class RecyclerGridView extends React.PureComponent<
 
         layoutSource.beginUpdate(this);
         try {
+            // Render queued items to keep them from being unmounted
+            let queuedItems = layoutSource.allQueuedItems();
+            for (let reuseID of Object.keys(queuedItems)) {
+                for (let item of queuedItems[reuseID]) {
+                    if (item.ref.current) {
+                        // Item view node is mounted
+                        items.push(this._renderItem(item, layoutSource));
+                    }
+                }
+            }
+
+            // Render visible items
             for (let index of layoutSource.visibleIndexes()) {
                 let item = layoutSource.getVisibleItem(index);
                 if (!item) {
                     // We cannot dequeue a item as it would trigger a `findDOMNode` event inside `render()`.
-                    console.warn('Creating item in render method. This should have been done in UNSAFE_componentWillUpdate().');
+                    console.warn(`Creating item in render method. This should have been done in UNSAFE_componentWillUpdate(). Layotu source: ${layoutSource.id}`);
                     item = layoutSource.createItem(index, this);
                 }
                 items.push(this._renderItem(item, layoutSource));
             }
-            layoutSource.endUpdate(this);
         } catch (error) {
             console.error('Error during render: ' + error?.message || error);
-            layoutSource.endUpdate(this, { cancelled: true });
         }
+        layoutSource.endUpdate(this);
 
         // console.debug(`[${layoutSource.id}] end render`);
         return items;
     }
 
     private _renderItem<T>(item: IItem<T>, layoutSource: LayoutSource<T>): React.ReactNode {
-        let viewKey = item.viewKey;
-        if (!viewKey) {
-            viewKey = String(++this._itemViewCounter);
-            item.viewKey = viewKey;
-        }
+        // let viewKey = item.viewKey;
+        // if (!viewKey) {
+        //     viewKey = String(++this._itemViewCounter);
+        //     item.viewKey = viewKey;
+        //     console.debug(`[${layoutSource.id}] item ${JSON.stringify(item.index)} layout key: ${viewKey}`);
+        // }
         return (
             <ItemView
                 ref={item.ref}
-                key={viewKey}
+                key={item.viewKey}
                 item={item}
                 layoutSource={layoutSource}
                 renderItem={() => this.props.renderItem(item, layoutSource, this)}

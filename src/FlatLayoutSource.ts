@@ -152,16 +152,11 @@ export default class FlatLayoutSource extends LayoutSource<T, UniformLayoutSourc
         // console.debug(`[${this.id}] pendingVisibleRange: ` + JSON.stringify(this.pendingVisibleRange));
     }
 
-    didCommitUpdate(view: Grid) {
+    didEndUpdate(view: Grid) {
         let pendingVisibleRange = this.pendingVisibleRange;
         if (pendingVisibleRange) {
             this.visibleRange = pendingVisibleRange;
         }
-        super.didCommitUpdate(view);
-    }
-
-    didEndUpdate(view: Grid) {
-        this.pendingVisibleRange = undefined;
         super.didEndUpdate(view);
     }
 
