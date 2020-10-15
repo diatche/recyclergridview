@@ -31,6 +31,12 @@ import {
     normalizeAnimatedDerivedValueXY,
 } from './rnUtil';
 
+/**
+ * After which time interval to fade in
+ * reused items.
+ **/
+const kAnimateShowReusedThresholdMS = 50;
+
 const kDefaultProps: Partial<LayoutSourceProps<any>> = {
     showDuration: 150,
 };
@@ -176,6 +182,12 @@ export default class LayoutSource<
     private _animatedSubscriptions: { [id: string]: Animated.Value | Animated.ValueXY } = {};
     private _updateDepth = 0;
     private _updateInfoQueue: (ILayoutUpdateInfo | undefined)[] = [];
+
+    /**
+     * When the last update was started
+     * in milliseconds from Unix Epoch.
+     **/
+    updateStartTimestamp = 0;
 
     constructor(props: Props) {
         this.props = {
@@ -393,6 +405,7 @@ export default class LayoutSource<
     beginUpdate(view: Grid) {
         this._updateDepth += 1;
         if (this._updateDepth === 1) {
+            this.updateStartTimestamp = new Date().valueOf();
             this.didBeginUpdate(view);
         }
     }
@@ -938,13 +951,14 @@ export default class LayoutSource<
                 // Start shown if no show animation given
                 opacity: new Animated.Value(this.showDuration <= 0 ? 1 : 0),
             },
+            showAnimation: false,
         };
         item.reuseID = this.getReuseID(index);
 
         this.props.didCreateItem?.(item);
 
         // console.debug(`[${this.id}] created (${item.reuseID}) at ${JSON.stringify(index)}`);
-        this.updateItem(item, index, { isNew: true });
+        this.updateItem(item, index, { created: true });
         return item;
     }
 
@@ -952,7 +966,8 @@ export default class LayoutSource<
         item: IItem<T>,
         index: T,
         options?: {
-            isNew?: boolean;
+            created?: boolean;
+            dequeued?: boolean;
         } & IAnimationBaseOptions
     ): Animated.CompositeAnimation | undefined {
         let previousContentLayout = item.contentLayout;
@@ -1020,16 +1035,31 @@ export default class LayoutSource<
             }
         }
 
-        // Determine when to show item:
-        if (options?.isNew) {
-            // Animate opacity to reduce jarring effect
-            // in ItemView render (if duration given).
             if (this.showDuration <= 0) {
-                // No duration given
-                item.animated.opacity.setValue(1);
-            }
+            item.showAnimation = false;
         } else {
-            // Updated items are always shown instantly
+            // Determine when to show item:
+            let {
+                created: isNew = false,
+                dequeued: wasDequeued = false,
+            } = options || {};
+            item.showAnimation = isNew;
+            if (!item.showAnimation || wasDequeued) {
+                // Item was updated
+                let updateDelay = new Date().valueOf() - this.updateStartTimestamp;
+                console.debug('updateDelay: ' + updateDelay);
+                item.showAnimation = updateDelay > kAnimateShowReusedThresholdMS;
+            }
+            }
+        
+        if (item.showAnimation) {
+            // Animate here if updating, otherwise
+            // the animation will start when the item
+            // view is mounted.
+            item.ref.current && console.debug('animating update fade in');
+            item.ref.current?.fadeIn();
+        } else {
+            // Show immediately
             item.animated.opacity.setValue(1);
         }
 
@@ -1204,7 +1234,7 @@ export default class LayoutSource<
                 index: item.index,
                 contentLayout: { ...item.contentLayout },
             };
-            this.updateItem(item, index);
+            this.updateItem(item, index, { dequeued: true });
             if (itemNode && this.props.shouldRenderItem({ item, previous })) {
                 // Update existing rendered node
                 itemNode.setNeedsRender();
