@@ -1121,17 +1121,6 @@ export default class RecyclerGridView extends React.PureComponent<
 
         layoutSource.beginUpdate(this);
         try {
-            // Render queued items to keep them from being unmounted
-            let queuedItems = layoutSource.allQueuedItems();
-            for (let reuseID of Object.keys(queuedItems)) {
-                for (let item of queuedItems[reuseID]) {
-                    if (item.ref.current) {
-                        // Item view node is mounted
-                        items.push(this._renderItem(item, layoutSource));
-                    }
-                }
-            }
-
             // Render visible items
             for (let index of layoutSource.visibleIndexes()) {
                 let item = layoutSource.getVisibleItem(index);
@@ -1141,6 +1130,17 @@ export default class RecyclerGridView extends React.PureComponent<
                     item = layoutSource.createItem(index, this);
                 }
                 items.push(this._renderItem(item, layoutSource));
+            }
+            
+            // Render queued items to keep them from being unmounted
+            let queuedItems = layoutSource.allQueuedItems();
+            for (let reuseID of Object.keys(queuedItems)) {
+                for (let item of queuedItems[reuseID]) {
+                    if (item.ref.current) {
+                        // Item view node is mounted
+                        items.push(this._renderItem(item, layoutSource));
+                    }
+                }
             }
         } catch (error) {
             console.error('Error during render: ' + error?.message || error);

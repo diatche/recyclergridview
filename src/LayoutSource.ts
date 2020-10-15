@@ -45,6 +45,7 @@ let _layoutSourceCounter = 0;
 
 export interface ILayoutUpdateInfo {
     needsRender?: boolean;
+    prerender?: boolean;
 }
 
 export interface LayoutSourceProps<T> {
@@ -181,6 +182,7 @@ export default class LayoutSource<
     private _animatedSubscriptions: { [id: string]: Animated.Value | Animated.ValueXY } = {};
     private _updateDepth = 0;
     private _updateInfoQueue: (ILayoutUpdateInfo | undefined)[] = [];
+    private _pendingChanges = false;
 
     /**
      * When the last update was started
@@ -193,7 +195,9 @@ export default class LayoutSource<
             ...kDefaultProps,
             ...props,
         };
-        this.id = String(++_layoutSourceCounter);
+        this.id = [String(++_layoutSourceCounter), this.props.reuseID]
+            .filter(x => !!x)
+            .join('_');
         this._itemQueues = {};
 
         this.itemSize$ = new Animated.ValueXY();
@@ -413,6 +417,7 @@ export default class LayoutSource<
         this._updateDepth += 1;
         if (this._updateDepth === 1) {
             this.updateStartTimestamp = new Date().valueOf();
+            this._pendingChanges = false;
             this.didBeginUpdate(view);
         }
     }
@@ -436,15 +441,19 @@ export default class LayoutSource<
         }
         
         let needsRender = false;
+        let prerender = false;
         for (let info of this._updateInfoQueue) {
             if (!needsRender && info?.needsRender) {
                 needsRender = true;
+            }
+            if (!prerender && info?.prerender) {
+                prerender = true;
             }
         }
         this._updateInfoQueue = [];
 
         this.didEndUpdate(view);
-        if (needsRender) {
+        if (needsRender && !prerender) {
             view.setNeedsRender();
         }
     }
@@ -1009,27 +1018,30 @@ export default class LayoutSource<
             }
         }
 
-        if (this.showDuration <= 0) {
-            item.showAnimation = false;
-        } else {
-            // Determine when to show item:
-            let {
-                created: isNew = false,
-                dequeued: wasDequeued = false,
-            } = options || {};
-            item.showAnimation = isNew;
-            if (!item.showAnimation || wasDequeued) {
-                // Item was updated
-                let updateDelay = new Date().valueOf() - this.updateStartTimestamp;
-                item.showAnimation = updateDelay > kAnimateShowReusedThresholdMS;
-            }
-        }
+        item.showAnimation = false;
+        // if (this.showDuration <= 0) {
+        //     item.showAnimation = false;
+        // } else {
+        //     // Determine when to show item:
+        //     let {
+        //         created: isNew = false,
+        //         dequeued: wasDequeued = false,
+        //     } = options || {};
+        //     item.showAnimation = isNew;
+        //     if (wasDequeued) {
+        //         let updateDelay = new Date().valueOf() - this.updateStartTimestamp;
+        //         item.showAnimation = updateDelay > kAnimateShowReusedThresholdMS;
+        //     }
+        // }
         
         if (item.showAnimation) {
             // Animate here if updating, otherwise
             // the animation will start when the item
             // view is mounted.
-            item.ref.current?.fadeIn();
+            if (item.ref.current) {
+                item.ref.current.fadeIn();
+                item.showAnimation = false;
+            }
         } else {
             // Show immediately
             item.animated.opacity.setValue(1);
@@ -1078,7 +1090,7 @@ export default class LayoutSource<
         let queue = getLazyArray(this._itemQueues, reuseID);
         let item = queue.pop();
         if (item && item.reuseID !== reuseID) {
-            console.error(`Dequeued an item from queue with reuseID "${reuseID}" with a different reuseID "${item.reuseID}"`);
+            throw new Error(`Dequeued an item from queue with reuseID "${reuseID}" with a different reuseID "${item.reuseID}"`);
         }
         // if (item) {
         //     console.debug(`[${this.id}] dequeued ${reuseID} (from: ${JSON.stringify(item.index)}, size: ${queue.length})`);
@@ -1129,21 +1141,24 @@ export default class LayoutSource<
         // console.debug(`[${this.id}] updateItems (prerender: ${prerender})`);
         this.beginUpdate(view);
         try {
-            for (let { add, remove } of this.itemUpdates()) {
-                if (typeof remove !== 'undefined') {
-                    // Item hidden
-                    // console.debug(`[${this.id}] hide: ${JSON.stringify(remove)}`);
-                    this.queueItem(remove);
-                } else if (typeof add !== 'undefined') {
-                    // Item shown
-                    // console.debug(`[${this.id}] show: ${JSON.stringify(add)}`);
-                    if (!this.dequeueItem(add, dequeueOptions)) {
-                        this.createItem(add, view);
-                        needsRender = !prerender;
-                        // console.debug(`[${this.id}] need to render ${JSON.stringify(add)}`);
+            if (!this._pendingChanges) {
+                this._pendingChanges = true;
+                for (let { add, remove } of this.itemUpdates()) {
+                    if (typeof remove !== 'undefined') {
+                        // Item hidden
+                        // console.debug(`[${this.id}] hide: ${JSON.stringify(remove)}`);
+                        this.queueItem(remove);
+                    } else if (typeof add !== 'undefined') {
+                        // Item shown
+                        // console.debug(`[${this.id}] show: ${JSON.stringify(add)}`);
+                        if (!this.dequeueItem(add, dequeueOptions)) {
+                            this.createItem(add, view);
+                            needsRender = !prerender;
+                            // console.debug(`[${this.id}] need to render ${JSON.stringify(add)}`);
+                        }
                     }
                 }
-            }
+            } // Else: already checked for changes
             let itemAnimationOptions = {
                 ...animationOptions,
                 manualStart: true,
@@ -1163,7 +1178,7 @@ export default class LayoutSource<
         } catch (error) {
             console.error('Error during update: ' + error?.message || error);
         }
-        this.endUpdate(view, { needsRender });
+        this.endUpdate(view, { needsRender, prerender });
 
         animation = undefined;
         if (animations.length !== 0) {

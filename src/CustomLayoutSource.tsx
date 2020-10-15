@@ -104,17 +104,11 @@ export default class CustomLayoutSource extends LayoutSource<T, CustomLayoutSour
         // console.debug(`[${this.id}] pendingVisibleIndexSet: ` + JSON.stringify(Array.from(this.pendingVisibleIndexSet)));
     }
 
-    didCommitUpdate(view: Grid) {
+    didEndUpdate(view: Grid) {
         let pendingVisibleIndexSet = this.pendingVisibleIndexSet;
         if (pendingVisibleIndexSet) {
             this.visibleIndexSet = pendingVisibleIndexSet;
         }
-        // console.debug(`[${this.id}] commit update with item layouts: ` + JSON.stringify(Object.values(this.visibleItems).map(item => item.layout), null, 2));
-        super.didCommitUpdate(view);
-    }
-
-    didEndUpdate(view: Grid) {
-        this.pendingVisibleIndexSet = undefined;
         super.didEndUpdate(view);
     }
 
