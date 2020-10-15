@@ -669,18 +669,25 @@ export default class RecyclerGridView extends React.PureComponent<
     }
 
     get locationOffset$(): IAnimatedPoint {
+        let { x: x0, y: y0 } = this.containerOriginOffset$;
         return {
             x: Animated.add(
                 this._locationOffsetBase$.x,
                 Animated.divide(
-                    this.viewOffset$.x,
+                    Animated.subtract(
+                        this.viewOffset$.x,
+                        x0,
+                    ),
                     this.scale$.x,
                 ),
             ),
             y: Animated.add(
                 this._locationOffsetBase$.y,
                 Animated.divide(
-                    this.viewOffset$.y,
+                    Animated.subtract(
+                        this.viewOffset$.y,
+                        y0,
+                    ),
                     this.scale$.y,
                 ),
             ),
@@ -864,38 +871,13 @@ export default class RecyclerGridView extends React.PureComponent<
         };
     }
 
-    /**
-     * Transforms a point in content coordinates
-     * to a point in container coordinates.
-     * @param point 
-     */
-    getContainerLocation(
-        point: IPoint,
-        options?: {
-            scale?: Partial<IPoint>;
-        }
-    ): IPoint {
-        let { x: xl0, y: yl0 } = this._locationOffsetBase;
-        let { x: x0, y: y0 } = this.containerOriginOffset;
-        let cp: IPoint = {
-            x: this._viewOffset.x - x0,
-            y: this._viewOffset.y - y0,
-        };
-        let scale: IPoint = {
-            x: this._scale.x,
-            y: this._scale.y,
-        };
-        if (options?.scale) {
-            if (options.scale.x) {
-                scale.x *= options.scale.x;
-            }
-            if (options.scale.y) {
-                scale.y *= options.scale.y;
-            }
-        }
-        cp.x += (point.x + xl0) * scale.x;
-        cp.y += (point.y + yl0) * scale.y;
-        return cp;
+    getContentTransform() {
+        let offset = this.locationOffset$;
+        // let offset = this.viewOffset$;
+        return [
+            { translateX: offset.x },
+            { translateY: offset.y },
+        ];
     }
 
     /**
@@ -909,17 +891,11 @@ export default class RecyclerGridView extends React.PureComponent<
             scale?: Partial<IAnimatedPoint> | Partial<Animated.ValueXY>;
         }
     ): IAnimatedPoint {
-        let { x: xl0, y: yl0 } = this._locationOffsetBase$;
-        let { x: x0, y: y0 } = this.containerOriginOffset$;
-        let cp: IAnimatedPoint = {
-            x: Animated.subtract(
-                this.viewOffset$.x,
-                x0,
-            ),
-            y: Animated.subtract(
-                this.viewOffset$.y,
-                y0,
-            ),
+        let { x: x0, y: y0 } = this.locationOffset$;
+
+        let diff = {
+            x: Animated.subtract(point.x, x0),
+            y: Animated.subtract(point.y, y0),
         };
         let scale: IAnimatedPoint = {
             x: this.scale$.x,
@@ -933,27 +909,56 @@ export default class RecyclerGridView extends React.PureComponent<
                 scale.y = Animated.multiply(scale.y, options.scale.y);
             }
         }
-        cp.x = Animated.add(
-            cp.x,
-            Animated.multiply(
-                Animated.add(
-                    point.x,
-                    xl0,
-                ),
-                scale.x,
-            ),
-        );
-        cp.y = Animated.add(
-            cp.y,
-            Animated.multiply(
-                Animated.add(
-                    point.y,
-                    yl0,
-                ),
-                scale.y,
-            ),
-        );
-        return cp;
+        return {
+            x: Animated.add(x0, Animated.multiply(diff.x, scale.x)),
+            y: Animated.add(y0, Animated.multiply(diff.y, scale.y)),
+        };
+
+        // let { x: xl0, y: yl0 } = this._locationOffsetBase$;
+        // let { x: x0, y: y0 } = this.containerOriginOffset$;
+        // let cp: IAnimatedPoint = {
+        //     x: Animated.subtract(
+        //         0,
+        //         x0,
+        //     ),
+        //     y: Animated.subtract(
+        //         0,
+        //         y0,
+        //     ),
+        // };
+        // let scale: IAnimatedPoint = {
+        //     x: this.scale$.x,
+        //     y: this.scale$.y,
+        // };
+        // if (options?.scale) {
+        //     if (options.scale.x) {
+        //         scale.x = Animated.multiply(scale.x, options.scale.x);
+        //     }
+        //     if (options.scale.y) {
+        //         scale.y = Animated.multiply(scale.y, options.scale.y);
+        //     }
+        // }
+        // cp.x = Animated.add(
+        //     cp.x,
+        //     Animated.multiply(
+        //         Animated.add(
+        //             point.x,
+        //             xl0,
+        //         ),
+        //         scale.x,
+        //     ),
+        // );
+        // cp.y = Animated.add(
+        //     cp.y,
+        //     Animated.multiply(
+        //         Animated.add(
+        //             point.y,
+        //             yl0,
+        //         ),
+        //         scale.y,
+        //     ),
+        // );
+        // return cp;
     }
 
     /**
@@ -1084,7 +1089,14 @@ export default class RecyclerGridView extends React.PureComponent<
                 }}
             >
                 <ScrollLock locked={this._scrollLocked$} />
-                {itemViews}
+                <Animated.View style={{
+                    overflow: 'visible',
+                    transform: this.getContentTransform(),
+                    // width: item.animated.viewLayout.size.x,
+                    // height: item.animated.viewLayout.size.y,
+                }}>
+                    {itemViews}
+                </Animated.View>
             </Animated.View>
         );
     }
@@ -1115,7 +1127,7 @@ export default class RecyclerGridView extends React.PureComponent<
                 let item = layoutSource.getVisibleItem(index);
                 if (!item) {
                     // We cannot dequeue a item as it would trigger a `findDOMNode` event inside `render()`.
-                    console.warn('Creating item in render method. This should have been done in UNSAFE_componentWillUpdate().');
+                    console.warn(`Creating item in render method for layout source ${layoutSource.id}. This should have been done in UNSAFE_componentWillUpdate().`);
                     item = layoutSource.createItem(index, this);
                 }
                 items.push(this._renderItem(item, layoutSource));

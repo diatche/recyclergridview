@@ -565,33 +565,6 @@ export default class LayoutSource<
         }
     }
 
-    getContainerLocation(point: IPoint, view: Grid): IPoint {
-        let { x, y } = view.getContainerLocation(point, {
-            scale: this.scale
-        });
-        let p = this.getStickyContainerLocation(view);
-        let scale = this.getScale(view);
-        
-        if (typeof p.x === 'undefined') {
-            if (scale.x > 0) {
-                p.x = x + this._insets.left;
-            } else {
-                p.x = x - this._insets.right;
-            }
-        }
-        p.x = p.x || 0 + this._origin.x * scale.x;
-
-        if (typeof p.y === 'undefined') {
-            if (scale.y > 0) {
-                p.y = y + this._insets.top;
-            } else {
-                p.y = y - this._insets.bottom;
-            }
-        }
-        p.y = p.y || 0 + this._origin.y * scale.y;
-        return p as IPoint;
-    }
-
     getContainerLocation$(point: IAnimatedPoint | Animated.ValueXY, view: Grid): IAnimatedPoint {
         let { x, y } = view.getContainerLocation$(point, {
             scale: this.scale$
