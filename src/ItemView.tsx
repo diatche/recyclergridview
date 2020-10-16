@@ -79,7 +79,7 @@ export default class ItemView extends React.Component<
         let { item, renderItem } = this.props;
         this._needsRender = false;
 
-        // console.debug(`item ${JSON.stringify(this.props.item.index)} rendered`);
+        // console.debug(`[${this.props.layoutSource.id}] rendering item ${JSON.stringify(this.props.item.index)}`);
         return (
             <Animated.View
                 style={[

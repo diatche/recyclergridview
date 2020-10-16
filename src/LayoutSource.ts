@@ -39,7 +39,6 @@ let _layoutSourceCounter = 0;
 
 export interface ILayoutUpdateInfo {
     needsRender?: boolean;
-    prerender?: boolean;
 }
 
 export interface LayoutSourceProps<T> {
@@ -175,14 +174,9 @@ export default class LayoutSource<
     private _itemQueues: { [reuseID: string]: IItem<T>[] };
     private _animatedSubscriptions: { [id: string]: Animated.Value | Animated.ValueXY } = {};
     private _updateDepth = 0;
+    private _updateTimer: any;
     private _updateInfoQueue: (ILayoutUpdateInfo | undefined)[] = [];
-    private _pendingChanges = false;
-
-    /**
-     * When the last update was started
-     * in milliseconds from Unix Epoch.
-     **/
-    updateStartTimestamp = 0;
+    private _iteratedItemUpdates = false;
 
     constructor(props: Props) {
         this.props = {
@@ -327,11 +321,13 @@ export default class LayoutSource<
         this._zIndex = options?.zIndex || 0;
 
         if (needsForcedUpdate) {
-            this.setNeedsUpdate(view, { force: true });
+            this.updateItems(view, { visible: true });
         }
     }
 
     unconfigure() {
+        this._resetScheduledUpdate();
+
         for (let sub of Object.keys(this._animatedSubscriptions)) {
             let value = this._animatedSubscriptions[sub];
             value.removeListener(sub);
@@ -357,6 +353,22 @@ export default class LayoutSource<
         throw new Error('Not implemented');
     }
 
+    /**
+     * Iterates through updates only once during
+     * an update block.
+     */
+    * itemUpdatesOnce(): Generator<IItemUpdate<T>> {
+        if (this._iteratedItemUpdates) {
+            // Already checked for changes
+            return undefined;
+        }
+        this._iteratedItemUpdates = true;
+        for (let update of this.itemUpdates()) {
+            yield update;
+        }
+        return undefined;
+    }
+
     * visibleIndexes(): Generator<T> {
         throw new Error('Not implemented');
     }
@@ -374,23 +386,40 @@ export default class LayoutSource<
         item?.ref.current?.setNeedsRender();
     }
 
-    setNeedsUpdate(view: Grid, options?: { force?: boolean }) {
+    setNeedsUpdate(view: Grid) {
         if (this.isUpdating) {
+            // console.debug(`[${this.id}] already updating`);
             return;
         }
 
-        let { force = false } = options || {};
-        if (!force && view.needsRender) {
-            // View will render anyway
+        if (this.shouldUpdate(view)) {
+            this.scheduleUpdate(view);
+        }
+    }
+
+    /**
+     * Schedules a layout update.
+     */
+    scheduleUpdate(view: Grid) {
+        if (this.isUpdating) {
             return;
         }
-        if (force || this.shouldUpdate(view)) {
+        this._updateTimer = setTimeout(() => {
+            this._updateTimer = 0;
             this.updateItems(view);
+        }, 1);
+        // this.updateItems(view);
+    }
+
+    private _resetScheduledUpdate() {
+        if (this._updateTimer) {
+            clearTimeout(this._updateTimer);
+            this._updateTimer = 0;
         }
     }
 
     get isUpdating() {
-        return this._updateDepth > 0;
+        return this._updateDepth > 0 || !!this._updateTimer;
     }
 
     /**
@@ -410,8 +439,7 @@ export default class LayoutSource<
     beginUpdate(view: Grid) {
         this._updateDepth += 1;
         if (this._updateDepth === 1) {
-            this.updateStartTimestamp = new Date().valueOf();
-            this._pendingChanges = false;
+            this._iteratedItemUpdates = false;
             this.didBeginUpdate(view);
         }
     }
@@ -435,19 +463,15 @@ export default class LayoutSource<
         }
         
         let needsRender = false;
-        let prerender = false;
         for (let info of this._updateInfoQueue) {
             if (!needsRender && info?.needsRender) {
                 needsRender = true;
-            }
-            if (!prerender && info?.prerender) {
-                prerender = true;
             }
         }
         this._updateInfoQueue = [];
 
         this.didEndUpdate(view);
-        if (needsRender && !prerender) {
+        if (needsRender) {
             view.setNeedsRender();
         }
     }
@@ -961,6 +985,7 @@ export default class LayoutSource<
         if (!item.zIndex) {
             item.zIndex = this.zIndex;
         }
+        // console.debug(`[${this.id}] updated item ${JSON.stringify(index)}`);
         // console.debug(`[${this.id}] content layout ${JSON.stringify(index)}: ${JSON.stringify(item.contentLayout, null, 2)}`);
         let { offset, size } = item.contentLayout;
         let {
@@ -1113,47 +1138,44 @@ export default class LayoutSource<
     updateItems(
         view: Grid,
         options?: {
-            update?: boolean;
-            prerender?: boolean;
+            visible?: boolean;
         } & IAnimationBaseOptions
     ): Animated.CompositeAnimation | undefined {
+        this._resetScheduledUpdate();
+
+        // let startTimestamp = new Date().valueOf();
         let {
-            update = false,
-            prerender = view.needsRender,
+            visible = false,
             ...animationOptions
         } = options || {};
-        let dequeueOptions = { prerender };
         let animations: Animated.CompositeAnimation[] = [];
         let animation: Animated.CompositeAnimation | undefined;
         let needsRender = false;
 
-        // console.debug(`[${this.id}] updateItems (prerender: ${prerender})`);
+        // console.debug(`[${this.id}] updating items...`);
         this.beginUpdate(view);
         try {
-            if (!this._pendingChanges) {
-                this._pendingChanges = true;
-                for (let { add, remove } of this.itemUpdates()) {
-                    if (typeof remove !== 'undefined') {
-                        // Item hidden
-                        // console.debug(`[${this.id}] hide: ${JSON.stringify(remove)}`);
-                        this.queueItem(remove);
-                    } else if (typeof add !== 'undefined') {
-                        // Item shown
-                        // console.debug(`[${this.id}] show: ${JSON.stringify(add)}`);
-                        if (!this.dequeueItem(add, dequeueOptions)) {
-                            this.createItem(add, view);
-                            needsRender = !prerender;
-                            // console.debug(`[${this.id}] need to render ${JSON.stringify(add)}`);
-                        }
+            for (let { add, remove } of this.itemUpdatesOnce()) {
+                if (typeof remove !== 'undefined') {
+                    // Item hidden
+                    // console.debug(`[${this.id}] hide: ${JSON.stringify(remove)}`);
+                    this.queueItem(remove);
+                } else if (typeof add !== 'undefined') {
+                    // Item shown
+                    // console.debug(`[${this.id}] show: ${JSON.stringify(add)}`);
+                    if (!this.dequeueItem(add)) {
+                        this.createItem(add, view);
+                        needsRender = true;
+                        // console.debug(`[${this.id}] need to render ${JSON.stringify(add)}`);
                     }
                 }
-            } // Else: already checked for changes
+            }
             let itemAnimationOptions = {
                 ...animationOptions,
                 manualStart: true,
             };
 
-            if (update || animationOptions.animated) {
+            if (visible || animationOptions.animated) {
                 for (let index of this.visibleIndexes()) {
                     let item = this.getVisibleItem(index);
                     if (item) {
@@ -1167,7 +1189,7 @@ export default class LayoutSource<
         } catch (error) {
             console.error('Error during update: ' + error?.message || error);
         }
-        this.endUpdate(view, { needsRender, prerender });
+        this.endUpdate(view, { needsRender });
 
         animation = undefined;
         if (animations.length !== 0) {
@@ -1176,24 +1198,15 @@ export default class LayoutSource<
                 animation.start();
             }
         }
+        // let updateTime = new Date().valueOf() - startTimestamp;
+        // console.debug(`[${this.id}] updated items in ${updateTime} ms`);
         return animation;
     }
 
-    dequeueItem(
-        index: T,
-        options?: {
-            prerender?: boolean
-        }
-    ): IItem<T> | undefined {
+    dequeueItem(index: T): IItem<T> | undefined {
         let reuseID = this.getReuseID(index);
         let item = this._dequeueItem(reuseID);
         let itemNode = item?.ref.current;
-        if (item && !itemNode && !options?.prerender) {
-            // We have an existing item to reuse, but have neither a rendered react node
-            // nor we are about to render new nodes.
-            // !itemNode && console.debug(`[${this.id}] item ${JSON.stringify(item.index)} has no view node on dequeue`);
-            item = undefined;
-        }
         if (item) {
             // We have an existing item to reuse with either a rendered react node
             // or we are about to render new nodes.

@@ -171,6 +171,7 @@ export default class RecyclerGridView extends React.PureComponent<
     private _itemViewCounter = 0;
     private _needsRender = true;
     private _needsFirstRender = true;
+    private _renderTimer: any;
     private _animatedSubscriptions: { [id: string]: Animated.Value | Animated.ValueXY } = {};
     private _memoryWarningListener?: () => void;
     private _scrollLocked$ = new Animated.Value(0);
@@ -179,6 +180,7 @@ export default class RecyclerGridView extends React.PureComponent<
     private _interactionHandle = 0;
     private _updateDepth = 0;
     private _updateTimer?: any;
+    // private _mounted = false;
 
     constructor(props: RecyclerCollectionViewProps) {
         super(props);
@@ -352,11 +354,15 @@ export default class RecyclerGridView extends React.PureComponent<
     }
 
     componentDidMount() {
+        // this._mounted = true;
         this._bindToAppEvents();
-        this._updateLayoutSources();
     }
 
     componentWillUnmount() {
+        // this._mounted = false;
+        this._resetScheduledUpdate();
+        this._resetScheduledRender();
+
         this._unbindFromAppEvents();
         this._uncofigureLayoutSources();
 
@@ -369,11 +375,6 @@ export default class RecyclerGridView extends React.PureComponent<
         this._animatedSubscriptions = {};
 
         this._resetLongPress();
-    }
-
-    UNSAFE_componentWillUpdate() {
-        // console.debug('UNSAFE_componentWillUpdate');
-        this._updateLayoutSources();
     }
 
     get isPanningContent() {
@@ -423,39 +424,6 @@ export default class RecyclerGridView extends React.PureComponent<
             this._longPressTimer = undefined;
         }
     }
-
-    // getSnapshotBeforeUpdate(
-    //     prevProps: RecyclerCollectionViewProps,
-    //     prevState: RecyclerCollectionViewState
-    // ): RecyclerCollectionViewSnapshot | null {
-    //     console.debug('getSnapshotBeforeUpdate');
-    //     return { renderItems: true };
-    //     // if (this.state.renderNonce !== prevState.renderNonce) {
-    //     //     return { renderItems: true };
-    //     // }
-    //     // return null;
-    // }
-
-    // // static getDerivedStateFromProps(
-    // //     prevProps: RecyclerCollectionViewProps,
-    // //     prevState: RecyclerCollectionViewState
-    // // ) {
-    // //     // console.debug('getDerivedStateFromProps');
-    // // }
-
-    // componentDidUpdate(
-    //     prevProps: RecyclerCollectionViewProps,
-    //     prevState: RecyclerCollectionViewState,
-    //     snapshot: RecyclerCollectionViewSnapshot | null,
-    // ) {
-    //     // snapshot here is the value returned from getSnapshotBeforeUpdate
-    //     console.debug('componentDidUpdate');
-    //     if (snapshot !== null) {
-    //         if (snapshot.renderItems) {
-    //             this._prerenderLayoutSources();
-    //         }
-    //     }
-    // }
 
     private _configureLayoutSources() {
         let {
@@ -712,10 +680,30 @@ export default class RecyclerGridView extends React.PureComponent<
         if (this._needsRender) {
             return;
         }
-        // console.debug('setNeedsRender');
         this._needsRender = true;
-        setTimeout(() => this.setState({ renderNonce: this.state.renderNonce + 1 }), 0);
-        // this.setState({ renderNonce: this.state.renderNonce + 1 });
+        this.scheduleRender();
+        // if (!this.needsUpdate) {
+        //     // Schedule render after updates only
+        //     this.scheduleRender();
+        // }
+    }
+
+    scheduleRender() {
+        this.setState({ renderNonce: this.state.renderNonce + 1 });
+        // this._renderTimer = setTimeout(() => {
+        //     this._renderTimer = 0;
+        //     if (!this._mounted) {
+        //         return;
+        //     }
+        //     this.setState({ renderNonce: this.state.renderNonce + 1 });
+        // }, 1);
+    }
+
+    private _resetScheduledRender() {
+        if (this._renderTimer) {
+            clearTimeout(this._renderTimer);
+            this._renderTimer = 0;
+        }
     }
 
     didChangeContainerSize() {
@@ -769,8 +757,13 @@ export default class RecyclerGridView extends React.PureComponent<
      * Mark that a layout update is needed.
      */
     setNeedsUpdate() {
+        // console.debug('setNeedsUpdate');
         this.beginUpdate();
         this.endUpdate();
+    }
+
+    get needsUpdate() {
+        return this._updateDepth > 0 || !!this._updateTimer;
     }
 
     /**
@@ -780,9 +773,12 @@ export default class RecyclerGridView extends React.PureComponent<
         if (this._updateTimer) {
             return;
         }
-        this._updateTimer = setTimeout(() => {
-            this.update();
-        }, 1);
+        // console.debug(`scheduleUpdate`);
+        // this._updateTimer = setTimeout(() => {
+        //     this._updateTimer = 0;
+        //     this.update();
+        // }, 1);
+        this.update();
     }
 
     /**
@@ -791,7 +787,8 @@ export default class RecyclerGridView extends React.PureComponent<
      * this method to improve performance.
      */
     update() {
-        this._resetScheduleUpdate();
+        // console.debug(`update`);
+        this._resetScheduledUpdate();
 
         if (!this._hasContainerSize) {
             if (this._containerSize.x >= 1 && this._containerSize.y >= 1) {
@@ -813,9 +810,14 @@ export default class RecyclerGridView extends React.PureComponent<
         for (let layoutSource of this.layoutSources) {
             layoutSource.setNeedsUpdate(this);
         }
+
+        // if (this.needsRender) {
+        //     // Schedule render after updates only
+        //     this.scheduleRender();
+        // }
     }
 
-    private _resetScheduleUpdate() {
+    private _resetScheduledUpdate() {
         if (this._updateTimer) {
             clearTimeout(this._updateTimer);
             this._updateTimer = 0;
@@ -1041,7 +1043,8 @@ export default class RecyclerGridView extends React.PureComponent<
         
         this._needsFirstRender = false;
         this._needsRender = false;
-        this._resetScheduleUpdate();
+        this._resetScheduledRender();
+        this._resetScheduledUpdate();
 
         // console.debug('end render recycler grid view');
 
@@ -1103,30 +1106,29 @@ export default class RecyclerGridView extends React.PureComponent<
         return String(++this._itemViewCounter);
     }
 
-    private _updateLayoutSources() {
-        for (let layoutSource of this.layoutSources) {
-            this._updateLayoutSource(layoutSource);
-        }
-    }
+    // private _updateLayoutSources() {
+    //     for (let layoutSource of this.layoutSources) {
+    //         this._updateLayoutSource(layoutSource);
+    //     }
+    // }
 
-    private _updateLayoutSource<T>(layoutSource: LayoutSource<T>) {
-        // console.debug(`[${layoutSource.id}] begin prerender`);
-        layoutSource.updateItems(this, { prerender: true });
-        // console.debug(`[${layoutSource.id}] end prerender`);
-    }
+    // private _updateLayoutSource<T>(layoutSource: LayoutSource<T>) {
+    //     console.debug(`[${layoutSource.id}] begin prerender`);
+    //     layoutSource.updateItems(this, { prerender: true });
+    //     console.debug(`[${layoutSource.id}] end prerender`);
+    // }
 
     private _renderLayoutSource<T>(layoutSource: LayoutSource<T>): React.ReactNode[] {
         // console.debug(`[${layoutSource.id}] begin render`);
         let items: React.ReactNode[] = [];
 
-        layoutSource.beginUpdate(this);
         try {
             // Render visible items
             for (let index of layoutSource.visibleIndexes()) {
                 let item = layoutSource.getVisibleItem(index);
                 if (!item) {
                     // We cannot dequeue a item as it would trigger a `findDOMNode` event inside `render()`.
-                    console.warn(`Creating item in render method. This should have been done in UNSAFE_componentWillUpdate(). Layotu source: ${layoutSource.id}`);
+                    console.warn(`Creating item in render method. This should have been done in UNSAFE_componentWillUpdate(). Layout source: ${layoutSource.id}`);
                     item = layoutSource.createItem(index, this);
                 }
                 items.push(this._renderItem(item, layoutSource));
@@ -1145,7 +1147,6 @@ export default class RecyclerGridView extends React.PureComponent<
         } catch (error) {
             console.error('Error during render: ' + error?.message || error);
         }
-        layoutSource.endUpdate(this);
 
         // console.debug(`[${layoutSource.id}] end render`);
         return items;
