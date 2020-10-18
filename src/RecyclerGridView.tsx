@@ -135,7 +135,7 @@ export default class RecyclerGridView extends React.PureComponent<
     readonly viewOffset$: Animated.ValueXY;
     /** Animated container size. */
     readonly containerSize$: Animated.ValueXY;
-    /** Animated container screen offset. */
+    /** Animated container offset in parent view coordinates. */
     readonly containerOffset$: Animated.ValueXY;
     readonly scale$: Animated.ValueXY;
     /**
@@ -855,15 +855,10 @@ export default class RecyclerGridView extends React.PureComponent<
         };
     }
 
-    /**
-     * Transforms a point in screen coordinates
-     * to a point in container coordinates.
-     * @param point 
-     */
-    transformPointFromScreenToContainer(point: IPoint): IPoint {
+    getContainerLocationWithEvent(event: GestureResponderEvent): IPoint {
         return {
-            x: this._containerOffset.x - point.x,
-            y: this._containerOffset.y - point.y,
+            x: -event.nativeEvent.locationX,
+            y: -event.nativeEvent.locationY,
         };
     }
 
