@@ -734,8 +734,8 @@ export default class LayoutSource<
     getLocationInsetOffset(view: Grid): IPoint {
         let scale = this.getScale(view);
         return {
-            x: Math.max(this._insets.left / scale.x, -this._insets.right / scale.x),
-            y: Math.max(this._insets.top / scale.y, -this._insets.bottom / scale.y),
+            x: Math.min(-this._insets.left / scale.x, this._insets.right / scale.x),
+            y: Math.min(-this._insets.top / scale.y, this._insets.bottom / scale.y),
         };
     }
 
@@ -756,10 +756,9 @@ export default class LayoutSource<
         if (this._itemSize.x == 0 || this._itemSize.y == 0) {
             return zeroPoint();
         }
-        let offset = this.getLocationInsetOffset(view);
         let i = {
-            x: (point.x - offset.x) / this._itemSize.x + this._itemSize.x * this._itemOrigin.x,
-            y: (point.y - offset.y) / this._itemSize.y + this._itemSize.y * this._itemOrigin.y,
+            x: point.x / this._itemSize.x + this._itemSize.x * this._itemOrigin.x,
+            y: point.y / this._itemSize.y + this._itemSize.y * this._itemOrigin.y,
         };
         if (options) {
             if (options.floor) {
@@ -780,7 +779,7 @@ export default class LayoutSource<
         let { x, y } = view.viewOffset;
         let scale = this.getScale(view);
         return {
-            x: x + (scale.x > 0 ? this._insets.left : -this._insets.right),
+            x: x + (scale.x > 0 ? -this._insets.left : this._insets.right),
             y: y + (scale.y > 0 ? -this._insets.top : this._insets.bottom),
         };
     }
