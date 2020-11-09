@@ -55,7 +55,7 @@ export interface IScrollInfo {
     scaledVelocity: IPoint,
 }
 
-export interface RecyclerCollectionViewProps extends ViewProps, PanPressableProps {
+export interface RecyclerGridViewProps extends ViewProps, PanPressableProps {
     renderItem: (item: IItem<any>, layoutSource: LayoutSource<any>, view: RecyclerGridView) => React.ReactNode;
     scrollLock?: boolean;
     layoutSources: LayoutSource<any>[];
@@ -119,17 +119,17 @@ export interface RecyclerCollectionViewProps extends ViewProps, PanPressableProp
     useNativeDriver?: boolean;
 }
 
-interface RecyclerCollectionViewState {
+interface RecyclerGridViewState {
     renderNonce: number;
 }
 
-// interface RecyclerCollectionViewSnapshot {
+// interface RecyclerGridViewSnapshot {
 //     renderItems: boolean;
 // }
 
 export default class RecyclerGridView extends React.PureComponent<
-    RecyclerCollectionViewProps,
-    RecyclerCollectionViewState
+    RecyclerGridViewProps,
+    RecyclerGridViewState
 > {
     readonly layoutSources: LayoutSource<any>[];
     readonly viewOffset$: Animated.ValueXY;
@@ -182,7 +182,7 @@ export default class RecyclerGridView extends React.PureComponent<
     private _updateTimer?: any;
     // private _mounted = false;
 
-    constructor(props: RecyclerCollectionViewProps) {
+    constructor(props: RecyclerGridViewProps) {
         super(props);
         this._useNativeDriver = this.props.useNativeDriver || kDefaultProps.useNativeDriver;
         if (this._useNativeDriver) {
