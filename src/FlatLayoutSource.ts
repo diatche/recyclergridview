@@ -20,17 +20,17 @@ import {
 
 declare type T = number;
 
-export interface UniformLayoutSourceProps extends LayoutSourceProps<T> {
+export interface FlatLayoutSourceProps extends LayoutSourceProps<T> {
     horizontal?: boolean;
 }
 
-export default class FlatLayoutSource extends LayoutSource<T, UniformLayoutSourceProps> {
+export default class FlatLayoutSource extends LayoutSource<T, FlatLayoutSourceProps> {
     horizontal: boolean;
     visibleItems: { [i: number]: IItem<T> };
     visibleRange: [T, T];
     pendingVisibleRange?: [T, T];
 
-    constructor(props: UniformLayoutSourceProps) {
+    constructor(props: FlatLayoutSourceProps) {
         super(props);
         this.horizontal = !!props.horizontal;
         this.visibleItems = {};

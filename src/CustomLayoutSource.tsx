@@ -17,8 +17,10 @@ import {
 
 declare type T = number;
 
+export declare type IItemCustomLayout = Pick<IItemLayout, 'offset'> & Partial<IItemLayout>;
+
 export interface CustomLayoutSourceProps extends LayoutSourceProps<T> {
-    getItemLayout?: (index: T) => Pick<IItemLayout, 'offset'> & Partial<IItemLayout>;
+    getItemLayout?: (index: T) => IItemCustomLayout;
     getVisibleIndexSet(
         visibleRange: [IPoint, IPoint],
         layoutSource: CustomLayoutSource,
