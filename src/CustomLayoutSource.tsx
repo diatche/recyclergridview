@@ -20,7 +20,22 @@ declare type T = number;
 export declare type IItemCustomLayout = Pick<IItemLayout, 'offset'> & Partial<IItemLayout>;
 
 export interface CustomLayoutSourceProps extends LayoutSourceProps<T> {
+    /**
+     * Called when an item's layout is needed.
+     * An offset must be returned, all other layout
+     * properties are optional.
+     * @param index The item's index.
+     * @returns A custom layout object.
+     */
     getItemLayout?: (index: T) => IItemCustomLayout;
+
+    /**
+     * Called to determine which items are visible.
+     * @param visibleRange The visible bounding points in content coordinates.
+     * @param layoutSource This layout source.
+     * @param view The view instance.
+     * @returns A set of item indexes.
+     */
     getVisibleIndexSet(
         visibleRange: [IPoint, IPoint],
         layoutSource: CustomLayoutSource,
@@ -114,6 +129,11 @@ export default class CustomLayoutSource extends LayoutSource<T, CustomLayoutSour
         super.didEndUpdate(view);
     }
 
+    /**
+     * Called to determine which items are visible.
+     * @param view The view instance.
+     * @returns A set of item indexes.
+     */
     getVisibleIndexSet(view: Grid): Set<T> {
         return this.props.getVisibleIndexSet(
             this.getVisibleLocationRange(view),
