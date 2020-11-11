@@ -117,6 +117,11 @@ export interface RecyclerGridViewProps extends ViewProps, PanPressableProps {
      * Defaults to `false`.
      **/
     useNativeDriver?: boolean;
+
+    /**
+     * Called when the scale changes.
+     */
+    onScaleChanged?: (view: RecyclerGridView) => void;
 }
 
 interface RecyclerGridViewState {
@@ -724,6 +729,7 @@ export default class RecyclerGridView extends React.PureComponent<
     }
 
     didChangeScale() {
+        this.props.onScaleChanged?.(this);
         this.setNeedsUpdate();
     }
 
@@ -826,6 +832,39 @@ export default class RecyclerGridView extends React.PureComponent<
 
     get scale(): IPoint {
         return { ...this._scale };
+    }
+
+    getVisibleLocationRange(): [IPoint, IPoint] {
+        let { x: width, y: height } = this.containerSize;
+        if (width < 1 || height < 1) {
+            return [zeroPoint(), zeroPoint()];
+        }
+        let { x, y } = this.viewOffset;
+        let scale = this.scale;
+        let startOffset = {
+            x: Math.ceil(x),
+            y: Math.floor(y),
+        };
+        let endOffset = {
+            x: Math.floor(x - width),
+            y: Math.ceil(y - height),
+        };
+        if (scale.x < 0) {
+            let xSave = startOffset.x;
+            startOffset.x = endOffset.x
+            endOffset.x = xSave;
+        }
+        if (scale.y < 0) {
+            let ySave = startOffset.y;
+            startOffset.y = endOffset.y
+            endOffset.y = ySave;
+        }
+        let start = this.getLocation(startOffset);
+        let end = this.getLocation(endOffset);
+        if (start.x > end.x || start.y > end.y) {
+            return [zeroPoint(), zeroPoint()];
+        }
+        return [start, end];
     }
 
     /**

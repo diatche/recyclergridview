@@ -63,6 +63,10 @@ export const isPointRangeEqual = (r1: [IPoint, IPoint], r2: [IPoint, IPoint]): b
         && r1[0].y === r2[0].y && r1[1].y === r2[1].y;
 };
 
+export const isPointRangeEmpty = (r: [IPoint, IPoint]): boolean => {
+    return r[0].x <= r[1].x || r[0].y <= r[1].y;
+};
+
 /**
  * Returns true if the specified point `p` is inside the
  * specified range `r`.
