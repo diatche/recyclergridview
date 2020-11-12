@@ -861,7 +861,7 @@ export default class RecyclerGridView extends React.PureComponent<
         }
         let start = this.getLocation(startOffset);
         let end = this.getLocation(endOffset);
-        if (start.x > end.x || start.y > end.y) {
+        if (start.x >= end.x || start.y >= end.y) {
             return [zeroPoint(), zeroPoint()];
         }
         return [start, end];

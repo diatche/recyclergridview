@@ -64,7 +64,7 @@ export const isPointRangeEqual = (r1: [IPoint, IPoint], r2: [IPoint, IPoint]): b
 };
 
 export const isPointRangeEmpty = (r: [IPoint, IPoint]): boolean => {
-    return r[0].x <= r[1].x || r[0].y <= r[1].y;
+    return r[0].x >= r[1].x || r[0].y >= r[1].y;
 };
 
 /**

@@ -527,7 +527,7 @@ export default class LayoutSource<
         }
         let start = this.getLocation(startOffset, view);
         let end = this.getLocation(endOffset, view);
-        if (start.x > end.x || start.y > end.y) {
+        if (start.x >= end.x || start.y >= end.y) {
             return [zeroPoint(), zeroPoint()];
         }
         return [start, end];
