@@ -1,5 +1,5 @@
 {
-  "name": "gridpan",
+  "name": "evergrid",
   "version": "0.0.1",
   "description": "A cross-platform infinite 2D scrollable view with efficient cell recycling using Animated framework, without using a scroll view.",
   "main": "dist/reactnative/index.js",
@@ -19,7 +19,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/diatche/gridpan.git"
+    "url": "git+https://github.com/diatche/evergrid.git"
   },
   "keywords": [
     "React-native",
@@ -38,9 +38,9 @@
   "author": "Pavel Diatchenko <diatche@gmail.com>",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/diatche/gridpan/issues"
+    "url": "https://github.com/diatche/evergrid/issues"
   },
-  "homepage": "https://github.com/diatche/gridpan#readme",
+  "homepage": "https://github.com/diatche/evergrid#readme",
   "peerDependencies": {
     "react": ">=16.11.0",
     "react-native": ">=0.62.0 <1.0.0",
