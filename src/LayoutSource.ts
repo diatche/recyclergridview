@@ -41,6 +41,10 @@ export interface ILayoutUpdateInfo {
     needsRender?: boolean;
 }
 
+export interface IItemUpdateOptions extends IAnimationBaseOptions {
+    visible?: boolean;
+}
+
 export interface LayoutSourceProps<T> {
     /**
      * The default item size in content coordinates.
@@ -1136,9 +1140,7 @@ export default class LayoutSource<
 
     updateItems(
         view: Grid,
-        options?: {
-            visible?: boolean;
-        } & IAnimationBaseOptions
+        options?: IItemUpdateOptions,
     ): Animated.CompositeAnimation | undefined {
         this._resetScheduledUpdate();
 
