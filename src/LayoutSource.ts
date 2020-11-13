@@ -17,6 +17,7 @@ import {
     IPoint,
     IAnimationBaseOptions,
     IAnimatedPointInput,
+    IItemSnapshot,
 } from "./types";
 import {
     getLazyArray,
@@ -41,8 +42,18 @@ export interface ILayoutUpdateInfo {
     needsRender?: boolean;
 }
 
-export interface IItemUpdateOptions extends IAnimationBaseOptions {
+export interface IItemUpdateManyOptions extends IAnimationBaseOptions {
     visible?: boolean;
+    forceRender?: boolean;
+}
+
+export interface IItemUpdateSingleOptions extends IAnimationBaseOptions {
+    created?: boolean;
+    dequeued?: boolean;
+}
+
+export interface IItemRenderOptions {
+    force?: boolean;
 }
 
 export interface LayoutSourceProps<T> {
@@ -119,7 +130,7 @@ export interface LayoutSourceProps<T> {
      **/
     shouldRenderItem: (data: {
         item: IItem<T>;
-        previous: Pick<IItem<T>, 'index' | 'contentLayout'>;
+        previous: IItemSnapshot<T>;
     }) => boolean;
     /**
      * Overrides item view layout. Does not scale.
@@ -969,10 +980,7 @@ export default class LayoutSource<
     updateItem(
         item: IItem<T>,
         index: T,
-        options?: {
-            created?: boolean;
-            dequeued?: boolean;
-        } & IAnimationBaseOptions
+        options?: IItemUpdateSingleOptions,
     ): Animated.CompositeAnimation | undefined {
         let previousContentLayout = item.contentLayout;
         let newContentLayout = this.getItemContentLayout(index);
@@ -1140,18 +1148,20 @@ export default class LayoutSource<
 
     updateItems(
         view: Grid,
-        options?: IItemUpdateOptions,
+        options?: IItemUpdateManyOptions,
     ): Animated.CompositeAnimation | undefined {
         this._resetScheduledUpdate();
 
         // let startTimestamp = new Date().valueOf();
         let {
             visible = false,
+            forceRender = false,
             ...animationOptions
         } = options || {};
         let animations: Animated.CompositeAnimation[] = [];
         let animation: Animated.CompositeAnimation | undefined;
         let needsRender = false;
+        const renderOptions = forceRender ? { force: true } : undefined;
 
         // console.debug(`[${this.id}] updating items...`);
         this.beginUpdate(view);
@@ -1164,7 +1174,7 @@ export default class LayoutSource<
                 } else if (typeof add !== 'undefined') {
                     // Item shown
                     // console.debug(`[${this.id}] show: ${JSON.stringify(add)}`);
-                    if (!this.dequeueItem(add)) {
+                    if (!this.dequeueItem(add, renderOptions)) {
                         this.createItem(add, view);
                         needsRender = true;
                         // console.debug(`[${this.id}] need to render ${JSON.stringify(add)}`);
@@ -1176,11 +1186,15 @@ export default class LayoutSource<
                 manualStart: true,
             };
 
-            if (visible || animationOptions.animated) {
+            if ((visible && !needsRender) || animationOptions.animated) {
                 for (let index of this.visibleIndexes()) {
                     let item = this.getVisibleItem(index);
                     if (item) {
+                        let previous = this._getItemSnapshot(item);
                         animation = this.updateItem(item, index, itemAnimationOptions);
+                        if (forceRender && !needsRender) {
+                            this._renderItem(item, previous, renderOptions);
+                        }
                         if (animation) {
                             animations.push(animation);
                         }
@@ -1204,23 +1218,36 @@ export default class LayoutSource<
         return animation;
     }
 
-    dequeueItem(index: T): IItem<T> | undefined {
+    dequeueItem(index: T, renderOptions?: IItemRenderOptions): IItem<T> | undefined {
         let reuseID = this.getReuseID(index);
         let item = this._dequeueItem(reuseID);
-        let itemNode = item?.ref.current;
         if (item) {
-            // We have an existing item to reuse with either a rendered react node
-            // or we are about to render new nodes.
-            let previous = {
-                index: item.index,
-                contentLayout: { ...item.contentLayout },
-            };
+            let previous = this._getItemSnapshot(item);
             this.updateItem(item, index, { dequeued: true });
-            if (itemNode && this.props.shouldRenderItem({ item, previous })) {
-                // Update existing rendered node
-                itemNode.setNeedsRender();
-            }
+            this._renderItem(item, previous, renderOptions);
         }
         return item;
+    }
+
+    private _getItemSnapshot(item: IItem<T>): IItemSnapshot<T> {
+        return {
+            index: item.index,
+            contentLayout: { ...item.contentLayout },
+        };
+    }
+
+    private _renderItem(
+        item: IItem<T>,
+        previous: IItemSnapshot<T>,
+        options?: IItemRenderOptions
+    ) {
+        let itemNode = item.ref.current;
+        if (!itemNode) {
+            return;
+        }
+        if (options?.force || this.props.shouldRenderItem({ item, previous })) {
+            // Update existing rendered node
+            itemNode.setNeedsRender();
+        }
     }
 }

@@ -95,6 +95,8 @@ export interface IItem<T> {
     showAnimation: boolean;
 }
 
+export interface IItemSnapshot<T> extends Pick<IItem<T>, 'index' | 'contentLayout'> {};
+
 export interface IInsets<T=number> {
     top: T,
     right: T,
