@@ -55,12 +55,12 @@ export interface IScrollInfo {
     scaledVelocity: IPoint,
 }
 
-export interface RecyclerGridViewProps extends ViewProps, PanPressableProps {
-    renderItem: (item: IItem<any>, layoutSource: LayoutSource<any>, view: RecyclerGridView) => React.ReactNode;
+export interface EvergridProps extends ViewProps, PanPressableProps {
+    renderItem: (item: IItem<any>, layoutSource: LayoutSource<any>, view: Evergrid) => React.ReactNode;
     scrollLock?: boolean;
     layoutSources: LayoutSource<any>[];
-    location?: AnimatedValueXYDerivedInput<RecyclerGridView>;
-    scale?: AnimatedValueXYDerivedInput<RecyclerGridView>;
+    location?: AnimatedValueXYDerivedInput<Evergrid>;
+    scale?: AnimatedValueXYDerivedInput<Evergrid>;
     /**
      * The point with values in the range 0-1.
      * The point represents the origin in the viewport.
@@ -69,11 +69,11 @@ export interface RecyclerGridViewProps extends ViewProps, PanPressableProps {
      * Defaults to `{ x: 0.5, y: 0.5 }`, i.e. the
      * center of the viewport.
      **/
-    anchor?: AnimatedValueXYDerivedInput<RecyclerGridView>;
-    viewportInsets?: Partial<IInsets<AnimatedValueDerivedInput<RecyclerGridView>>>,
+    anchor?: AnimatedValueXYDerivedInput<Evergrid>;
+    viewportInsets?: Partial<IInsets<AnimatedValueDerivedInput<Evergrid>>>,
     /**
      * Modify the pan target.
-     * Defaults to [viewOffset]{@link RecyclerGridView#viewOffset}
+     * Defaults to [viewOffset]{@link Evergrid#viewOffset}
      */
     panTarget?: Animated.ValueXY;
     /** Enabled by default. */
@@ -88,7 +88,7 @@ export interface RecyclerGridViewProps extends ViewProps, PanPressableProps {
      **/
     panResponderCallbacks?: Partial<PanResponderCallbacks>;
     snapToLocation?: (info: IScrollInfo) => Partial<IPoint> | undefined;
-    onViewportSizeChanged?: (collection: RecyclerGridView) => void;
+    onViewportSizeChanged?: (collection: Evergrid) => void;
     /**
      * The first z-index to use when adding layout sources.
      * Defaults to 10.
@@ -121,20 +121,20 @@ export interface RecyclerGridViewProps extends ViewProps, PanPressableProps {
     /**
      * Called when the scale changes.
      */
-    onScaleChanged?: (view: RecyclerGridView) => void;
+    onScaleChanged?: (view: Evergrid) => void;
 }
 
-interface RecyclerGridViewState {
+interface EvergridState {
     renderNonce: number;
 }
 
-// interface RecyclerGridViewSnapshot {
+// interface EvergridSnapshot {
 //     renderItems: boolean;
 // }
 
-export default class RecyclerGridView extends React.PureComponent<
-    RecyclerGridViewProps,
-    RecyclerGridViewState
+export default class Evergrid extends React.PureComponent<
+    EvergridProps,
+    EvergridState
 > {
     readonly layoutSources: LayoutSource<any>[];
     readonly viewOffset$: Animated.ValueXY;
@@ -187,7 +187,7 @@ export default class RecyclerGridView extends React.PureComponent<
     private _updateTimer?: any;
     // private _mounted = false;
 
-    constructor(props: RecyclerGridViewProps) {
+    constructor(props: EvergridProps) {
         super(props);
         this._useNativeDriver = this.props.useNativeDriver || kDefaultProps.useNativeDriver;
         if (this._useNativeDriver) {

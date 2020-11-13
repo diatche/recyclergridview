@@ -55,7 +55,7 @@ let rnConfig = {
         // },
         {
             ...rnOutputDefaults,
-            // name: 'RecyclerGridView',
+            // name: 'Evergrid',
             // file: pkg.module,
             dir: 'dist/reactnative',
             // format: 'umd',
@@ -87,7 +87,7 @@ let rConfig = {
     output: [
         {
             ...rOutputDefaults,
-            name: 'RecyclerGridView',
+            name: 'Evergrid',
             // file: pkg.browser,
             dir: 'dist/web',
             format: 'es',

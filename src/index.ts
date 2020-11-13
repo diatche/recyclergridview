@@ -1,6 +1,6 @@
 export * from './internal';
-import { RecyclerGridView } from './internal';
-export default RecyclerGridView;
+import { Evergrid } from './internal';
+export default Evergrid;
 export { default as GridLayoutSource } from './GridLayoutSource';
 export * from './GridLayoutSource';
 export { default as FlatLayoutSource } from './FlatLayoutSource';

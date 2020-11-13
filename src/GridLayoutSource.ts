@@ -2,7 +2,7 @@ import {
     IItemLayout,
     LayoutSource,
     LayoutSourceProps,
-    RecyclerGridView as Grid,
+    Evergrid as Grid,
 } from "./internal";
 import {
     IItem,

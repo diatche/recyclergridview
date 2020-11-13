@@ -7,7 +7,7 @@ import {
     IItemLayout,
     ILayout,
     MutableAnimatedPoint,
-    RecyclerGridView as Grid,
+    Evergrid as Grid,
 } from "./internal";
 import {
     AnimatedValueXYDerivedInput,
@@ -95,7 +95,7 @@ export interface LayoutSourceProps<T> {
      * By default, the view sets the z-index such that the
      * visual order of items matches the order in which the
      * layout source were added to the view. Customise this
-     * behaviour [in the view]{@link RecyclerGridViewProps}.
+     * behaviour [in the view]{@link EvergridProps}.
      * 
      * You can also set each item's z-index individually
      * in the item's layout callback. Refer to the subclasses
