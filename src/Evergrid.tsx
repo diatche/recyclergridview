@@ -1169,13 +1169,10 @@ export default class Evergrid extends React.PureComponent<
             }
             
             // Render queued items to keep them from being unmounted
-            let queuedItems = layoutSource.allQueuedItems();
-            for (let reuseID of Object.keys(queuedItems)) {
-                for (let item of queuedItems[reuseID]) {
-                    if (item.ref.current) {
-                        // Item view node is mounted
-                        items.push(this._renderItem(item, layoutSource));
-                    }
+            for (let item of layoutSource.flatQueuedItems()) {
+                if (item.ref.current) {
+                    // Item view node is mounted
+                    items.push(this._renderItem(item, layoutSource));
                 }
             }
         } catch (error) {

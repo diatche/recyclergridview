@@ -93,6 +93,15 @@ export interface IItem<T> {
      * rendered. This value is set automatically.
      */
     showAnimation: boolean;
+
+    /**
+     * If `true`, will render this item without
+     * calling delegate methods when the item
+     * is dequeued.
+     * 
+     * Also see {@link IItemUpdateManyOptions}
+     */
+    forceRenderOnDequeue: boolean;
 }
 
 export interface IItemSnapshot<T> extends Pick<IItem<T>, 'index' | 'contentLayout'> {};
@@ -106,11 +115,42 @@ export interface IInsets<T=number> {
 
 export type InsetEdge = keyof IInsets;
 
+/**
+ * Base animation options.
+ */
 export interface IAnimationBaseOptions {
+    /** 
+     * Set to `false` to disable the animation.
+     **/
     animated?: boolean;
+
+    /**
+     * If `true`, does not start the animation automatically.
+     **/
     manualStart?: boolean;
+
+    /**
+     * Called at the end of the animation
+     * or when the animation is interrupted.
+     */
     onEnd?: (info: { finished: boolean }) => void;
+
+    /**
+     * Spring animation options. Setting this to a truthy
+     * value configures a spring animation.
+     * 
+     * If both a `spring` and `timing` optionsa re truthy,
+     * `spring` takes precedence.
+     */
     spring?: Partial<Omit<Animated.SpringAnimationConfig, 'toValue'>>;
+
+    /**
+     * Timing animation options. Setting this to a truthy
+     * value configures a timing animation.
+     * 
+     * If both a `spring` and `timing` optionsa re truthy,
+     * `spring` takes precedence.
+     */
     timing?: Partial<Omit<Animated.TimingAnimationConfig, 'toValue'>>;
 }
 

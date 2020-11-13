@@ -42,8 +42,32 @@ export interface ILayoutUpdateInfo {
     needsRender?: boolean;
 }
 
+/**
+ * As well as animation options (see {@link IAnimationBaseOptions}),
+ * offers a way to customise an update to several items. 
+ */
 export interface IItemUpdateManyOptions extends IAnimationBaseOptions {
+    /**
+     * Update visible items.
+     * 
+     * If `forceRender` is specified, will render
+     * these items as well.
+     **/
     visible?: boolean;
+
+    /**
+     * Update queued items.
+     * 
+     * If `forceRender` is specified, will mark these
+     * items for render when they are dequeued.
+     **/
+    queued?: boolean;
+
+    /**
+     * By default, only item containers are updated 
+     * for performance reasons. To force re-rendering
+     * item content, set this to `true`.
+     */
     forceRender?: boolean;
 }
 
@@ -967,6 +991,7 @@ export default class LayoutSource<
                 opacity: new Animated.Value(this.showDuration <= 0 ? 1 : 0),
             },
             showAnimation: false,
+            forceRenderOnDequeue: false,
         };
         item.reuseID = this.getReuseID(index);
 
@@ -1111,6 +1136,15 @@ export default class LayoutSource<
         return this._itemQueues;
     }
 
+    * flatQueuedItems(): Generator<IItem<T>> {
+        let queuedItems = this._itemQueues;
+        for (let reuseID of Object.keys(queuedItems)) {
+            for (let item of queuedItems[reuseID]) {
+                yield item;
+            }
+        }
+    }
+
     private _dequeueItem(reuseID: string): IItem<T> | undefined {
         let queue = getLazyArray(this._itemQueues, reuseID);
         let item = queue.pop();
@@ -1146,6 +1180,16 @@ export default class LayoutSource<
         this._itemQueues = {};
     }
 
+    /**
+     * Shows added items, hides removed items
+     * and optionally updates visible items.
+     * 
+     * See {@link IItemUpdateManyOptions} for more information.
+     * 
+     * @param view 
+     * @param options Update options.
+     * @returns An animation object if an animation was specified, otherwise `undefined`.
+     */
     updateItems(
         view: Grid,
         options?: IItemUpdateManyOptions,
@@ -1155,13 +1199,16 @@ export default class LayoutSource<
         // let startTimestamp = new Date().valueOf();
         let {
             visible = false,
+            queued = false,
             forceRender = false,
             ...animationOptions
         } = options || {};
         let animations: Animated.CompositeAnimation[] = [];
         let animation: Animated.CompositeAnimation | undefined;
         let needsRender = false;
-        const renderOptions = forceRender ? { force: true } : undefined;
+        const renderOptions: IItemRenderOptions | undefined = forceRender
+            ? { force: true }
+            : undefined;
 
         // console.debug(`[${this.id}] updating items...`);
         this.beginUpdate(view);
@@ -1186,7 +1233,7 @@ export default class LayoutSource<
                 manualStart: true,
             };
 
-            if ((visible && !needsRender) || animationOptions.animated) {
+            if (visible || animationOptions.animated) {
                 for (let index of this.visibleIndexes()) {
                     let item = this.getVisibleItem(index);
                     if (item) {
@@ -1199,6 +1246,12 @@ export default class LayoutSource<
                             animations.push(animation);
                         }
                     }
+                }
+            }
+
+            if (queued && forceRender) {
+                for (let item of this.flatQueuedItems()) {
+                    item.forceRenderOnDequeue = true;
                 }
             }
         } catch (error) {
@@ -1224,7 +1277,18 @@ export default class LayoutSource<
         if (item) {
             let previous = this._getItemSnapshot(item);
             this.updateItem(item, index, { dequeued: true });
-            this._renderItem(item, previous, renderOptions);
+
+            let force = renderOptions?.force || item.forceRenderOnDequeue;
+            item.forceRenderOnDequeue = false;
+
+            this._renderItem(
+                item,
+                previous,
+                {
+                    ...renderOptions,
+                    force
+                }
+            );
         }
         return item;
     }
