@@ -869,24 +869,23 @@ export default class LayoutSource<
         };
 
         // Apply offsets
+        let itemOrigin$: IAnimatedPoint = { ...this.itemOrigin$ };
+        if (scale.x < 0) {
+            // Invert origin
+            itemOrigin$.x = Animated.subtract(1, itemOrigin$.x);
+        }
+        if (scale.y < 0) {
+            // Invert origin
+            itemOrigin$.y = Animated.subtract(1, itemOrigin$.y);
+        }
+
         let originOffset = {
-            x: Animated.multiply(this.itemOrigin$.x, layout.size.x),
-            y: Animated.multiply(this.itemOrigin$.y, layout.size.y),
+            x: Animated.multiply(itemOrigin$.x, layout.size.x),
+            y: Animated.multiply(itemOrigin$.y, layout.size.y),
         };
+        layout.offset.x = Animated.subtract(layout.offset.x, originOffset.x);
+        layout.offset.y = Animated.subtract(layout.offset.y, originOffset.y);
 
-        if (scale.x >= 0) {
-            layout.offset.x = Animated.subtract(layout.offset.x, originOffset.x);
-        } else {
-            layout.offset.x = Animated.subtract(layout.offset.x, layout.size.x);
-            layout.offset.x = Animated.add(layout.offset.x, originOffset.x);
-        }
-
-        if (scale.y >= 0) {
-            layout.offset.y = Animated.subtract(layout.offset.y, originOffset.y);
-        } else {
-            layout.offset.y = Animated.subtract(layout.offset.y, layout.size.y);
-            layout.offset.y = Animated.add(layout.offset.y, originOffset.y);
-        }
         return layout;
     }
 
