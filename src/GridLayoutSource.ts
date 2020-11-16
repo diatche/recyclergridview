@@ -18,7 +18,7 @@ import {
 declare type T = IPoint;
 
 export interface GridLayoutSourceProps extends LayoutSourceProps<T> {
-    
+    onVisibleRangeChange?: (visibleRange: [T, T]) => void;
 }
 
 export default class GridLayoutSource extends LayoutSource<IPoint, GridLayoutSourceProps> {
@@ -128,5 +128,8 @@ export default class GridLayoutSource extends LayoutSource<IPoint, GridLayoutSou
             this.visibleRange = pendingVisibleRange;
         }
         super.didEndUpdate(view);
+        if (pendingVisibleRange) {
+            this.props.onVisibleRangeChange?.(pendingVisibleRange);
+        }
     }
 }

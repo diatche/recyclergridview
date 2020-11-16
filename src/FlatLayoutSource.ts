@@ -21,6 +21,7 @@ import {
 declare type T = number;
 
 export interface FlatLayoutSourceProps extends LayoutSourceProps<T> {
+    onVisibleRangeChange?: (visibleRange: [T, T]) => void;
     horizontal?: boolean;
 }
 
@@ -158,6 +159,9 @@ export default class FlatLayoutSource extends LayoutSource<T, FlatLayoutSourcePr
             this.visibleRange = pendingVisibleRange;
         }
         super.didEndUpdate(view);
+        if (pendingVisibleRange) {
+            this.props.onVisibleRangeChange?.(pendingVisibleRange);
+        }
     }
 
     getVisibleRange(view: Grid): [T, T] {
