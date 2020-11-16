@@ -880,6 +880,18 @@ export default class Evergrid extends React.PureComponent<
     }
 
     /**
+     * Transforms an animated vector in content coordinates
+     * to an animated vector in view coordinates (pixels).
+     * @param point 
+     */
+    scaleVector$(point: IAnimatedPoint): IAnimatedPoint {
+        return {
+            x: Animated.multiply(point.x, this.scale$.x),
+            y: Animated.multiply(point.y, this.scale$.y),
+        };
+    }
+
+    /**
      * Transforms a vector in view coordinates (pixels)
      * to a vector in content coordinates.
      * @param point 
