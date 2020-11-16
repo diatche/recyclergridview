@@ -1,7 +1,11 @@
-import { kAllAxisTypeSet } from './const';
+import {
+    kAllAxisTypes,
+    kAllAxisTypeSet,
+} from './const';
 import {
     AxisLabel,
     AxisType,
+    AxisTypeMapping,
     Direction,
     IItemLayout,
     ILayout,
@@ -111,6 +115,14 @@ export const axisDirection = (axisType: AxisType): Direction => {
         case 'rightAxis': return 'vertical';
         case 'leftAxis': return 'vertical';
     }
+}
+
+export function axisTypeMap<T>(iterator: (axisType: AxisType) => T): AxisTypeMapping<T> {
+    let d: Partial<AxisTypeMapping<T>> = {};
+    for (let axisType of kAllAxisTypes) {
+        d[axisType] = iterator(axisType);
+    }
+    return d as AxisTypeMapping<T>;
 }
 
 export const horizontalBooleanToAxis = (isHorizontal: boolean): AxisLabel => isHorizontal ? 'x' : 'y';
