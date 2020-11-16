@@ -852,6 +852,14 @@ export default class LayoutSource<
         overrides: Partial<ILayout<IAnimatedPoint>> = {}
     ): ILayout<IAnimatedPoint> {
         let scale$ = this.getScale$(view);
+        let scale = this.getScale(view);
+        if (scale.x < 0) {
+            scale$.x = negate$(scale$.x);
+        }
+        if (scale.y < 0) {
+            scale$.y = negate$(scale$.y);
+        }
+
         let layout: ILayout<IAnimatedPoint> = {
             offset: overrides.offset || this.getContainerLocation$(contentLayout$.offset, view),
             size: overrides.size || {
@@ -860,30 +868,24 @@ export default class LayoutSource<
             }
         };
 
-        // Apply item origin
-        layout.offset.x = Animated.subtract(
-            layout.offset.x,
-            Animated.multiply(this.itemOrigin$.x, layout.size.x)
-        );
-        layout.offset.y = Animated.subtract(
-            layout.offset.y,
-            Animated.multiply(this.itemOrigin$.y, layout.size.y)
-        );
+        // Apply offsets
+        let originOffset = {
+            x: Animated.multiply(this.itemOrigin$.x, layout.size.x),
+            y: Animated.multiply(this.itemOrigin$.y, layout.size.y),
+        };
 
-        let scale = this.getScale(view);
-        if (scale.x < 0) {
-            if (!overrides.size) {
-                let widthOffset = layout.size.x;
-                layout.offset.x = Animated.add(layout.offset.x, widthOffset);
-                layout.size.x = negate$(layout.size.x);
-            }
+        if (scale.x >= 0) {
+            layout.offset.x = Animated.subtract(layout.offset.x, originOffset.x);
+        } else {
+            layout.offset.x = Animated.subtract(layout.offset.x, layout.size.x);
+            layout.offset.x = Animated.add(layout.offset.x, originOffset.x);
         }
-        if (scale.y < 0) {
-            if (!overrides.size) {
-                let heightOffset = layout.size.y;
-                layout.offset.y = Animated.add(layout.offset.y, heightOffset);
-                layout.size.y = negate$(layout.size.y);
-            }
+
+        if (scale.y >= 0) {
+            layout.offset.y = Animated.subtract(layout.offset.y, originOffset.y);
+        } else {
+            layout.offset.y = Animated.subtract(layout.offset.y, layout.size.y);
+            layout.offset.y = Animated.add(layout.offset.y, originOffset.y);
         }
         return layout;
     }

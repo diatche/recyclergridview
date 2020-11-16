@@ -892,6 +892,29 @@ export default class Evergrid extends React.PureComponent<
     }
 
     /**
+     * Transforms an animated size in content coordinates
+     * to an animated size in view coordinates (pixels).
+     * 
+     * Accounts for negative scale.
+     * 
+     * @param size 
+     */
+    scaleSize$(size: IAnimatedPoint): IAnimatedPoint {
+        let { scale } = this;
+        let scaledSize = {
+            x: Animated.multiply(size.x, this.scale$.x),
+            y: Animated.multiply(size.y, this.scale$.y),
+        };
+        if (scale.x < 0) {
+            scaledSize.x = negate$(scaledSize.x);
+        }
+        if (scale.y < 0) {
+            scaledSize.y = negate$(scaledSize.y);
+        }
+        return scaledSize;
+    }
+
+    /**
      * Transforms a vector in view coordinates (pixels)
      * to a vector in content coordinates.
      * @param point 
