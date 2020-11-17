@@ -152,10 +152,10 @@ export interface LayoutSourceProps<T> {
      * This method is called only when an item is reused,
      * not when it is created.
      **/
-    shouldRenderItem: (data: {
-        item: IItem<T>;
-        previous: IItemSnapshot<T>;
-    }) => boolean;
+    shouldRenderItem: (
+        item: IItem<T>,
+        previous: IItemSnapshot<T>,
+    ) => boolean;
     /**
      * Overrides item view layout. Does not scale.
      * Can override offset, size or both.
@@ -1310,7 +1310,7 @@ export default class LayoutSource<
         if (!itemNode) {
             return;
         }
-        if (options?.force || this.props.shouldRenderItem({ item, previous })) {
+        if (options?.force || this.props.shouldRenderItem(item, previous)) {
             // Update existing rendered node
             itemNode.setNeedsRender();
         }
