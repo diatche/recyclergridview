@@ -1,6 +1,7 @@
 import {
     kAllAxisTypes,
     kAllAxisTypeSet,
+    kHorizontalAxisTypes,
 } from './const';
 import {
     AxisLabel,
@@ -120,6 +121,10 @@ export const axisDirection = (axisType: AxisType): Direction => {
         case 'leftAxis': return 'vertical';
     }
 }
+
+export const isAxisHorizontal = (axisType: AxisType) => (
+    kHorizontalAxisTypes.indexOf(axisType) >= 0
+);
 
 export function axisTypeMap<T>(iterator: (axisType: AxisType) => T): AxisTypeMapping<T> {
     let d: Partial<AxisTypeMapping<T>> = {};
