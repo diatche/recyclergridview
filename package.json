@@ -10,7 +10,7 @@
   ],
   "types": "dist/reactnative/index.d.ts",
   "scripts": {
-    "test": "yarn",
+    "test": "jest",
     "coverage": "jest --coverage",
     "clean": "rm -rf dist",
     "build": "rollup -c",
