@@ -18,6 +18,7 @@ import {
     IAnimationBaseOptions,
     IAnimatedPointInput,
     IItemSnapshot,
+    IPartialLayout,
 } from "./types";
 import {
     getLazyArray,
@@ -164,7 +165,7 @@ export interface LayoutSourceProps<T> {
         index: T,
         view: Grid,
         layoutSource: LayoutSource,
-    ) => Partial<ILayout<IAnimatedPointInput>> | undefined;
+    ) => IPartialLayout<IAnimatedPointInput> | undefined;
     /**
      * Called after an item is created.
      */
@@ -835,8 +836,12 @@ export default class LayoutSource<
         throw new Error('Not implemented');
     }
 
-    getItemViewLayout$(index: T, view: Grid): Partial<ILayout<IAnimatedPointInput>> | undefined {
-        return this.props.getItemViewLayout?.(index, view, this);
+    getItemViewLayout$(index: T, view: Grid): IPartialLayout<IAnimatedPointInput> | undefined {
+        return this.props.getItemViewLayout?.(
+            index,
+            view,
+            this,
+        );
     }
 
     createItemContentLayout$(): ILayout<MutableAnimatedPoint> {
@@ -849,7 +854,7 @@ export default class LayoutSource<
     createItemViewLayout$(
         contentLayout$: ILayout<MutableAnimatedPoint>,
         view: Grid,
-        overrides: Partial<ILayout<IAnimatedPoint>> = {}
+        overrides: IPartialLayout<IAnimatedPoint> = {}
     ): ILayout<IAnimatedPoint> {
         let scale$ = this.getScale$(view);
         let scale = this.getScale(view);
@@ -860,13 +865,28 @@ export default class LayoutSource<
             scale$.y = negate$(scale$.y);
         }
 
-        let layout: ILayout<IAnimatedPoint> = {
-            offset: overrides.offset || this.getContainerLocation$(contentLayout$.offset, view),
-            size: overrides.size || {
+        let offset: IAnimatedPoint;
+        if (overrides.offset?.x && overrides.offset?.y) {
+            offset = overrides.offset as IAnimatedPoint;
+        } else {
+            offset = {
+                ...this.getContainerLocation$(contentLayout$.offset, view),
+                ...overrides.offset,
+            };
+        }
+
+        let size: IAnimatedPoint;
+        if (overrides.size?.x && overrides.size?.y) {
+            size = overrides.size as IAnimatedPoint;
+        } else {
+            size = {
                 x: Animated.multiply(contentLayout$.size.x, scale$.x),
                 y: Animated.multiply(contentLayout$.size.y, scale$.y),
-            }
-        };
+                ...overrides.size,
+            };
+        }
+
+        let layout: ILayout<IAnimatedPoint> = { offset, size };
 
         // Apply offsets
         let itemOrigin$: IAnimatedPoint = { ...this.itemOrigin$ };

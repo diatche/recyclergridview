@@ -23,6 +23,11 @@ export interface ILayout<T> {
     size: T;
 }
 
+export interface IPartialLayout<T> {
+    offset?: Partial<T>;
+    size?: Partial<T>;
+}
+
 export interface IItemLayout {
     offset: IPoint;
     size: IPoint;

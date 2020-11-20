@@ -12,6 +12,7 @@ import {
     IAnimatedValueXYInput,
     IAnimationBaseOptions,
     ILayout,
+    IPartialLayout,
     IPoint,
 } from './types';
 import { zeroPoint } from './util';
@@ -72,32 +73,42 @@ export function normalizeAnimatedDerivedValueXY<Info>(
     return new Animated.ValueXY(p);
 }
 
+export const normalizePartialAnimatedPoint = (
+    point: Partial<IAnimatedPointInput> = {}
+): Partial<IAnimatedPoint> => {
+    let { x, y } = point;
+    let normPoint: Partial<IAnimatedPoint> = {};
+    switch (typeof x) {
+        case 'number':
+            normPoint.x = new Animated.Value(x);
+            break;
+        case 'object':
+            normPoint.x = x;
+            break;
+    }
+    switch (typeof y) {
+        case 'number':
+            normPoint.y = new Animated.Value(y);
+            break;
+        case 'object':
+            normPoint.y = y;
+            break;
+    }
+    return normPoint;
+};
+
 export const normalizePartialAnimatedLayout = (
-    layout: Partial<ILayout<IAnimatedPointInput>> = {}
-): Partial<ILayout<IAnimatedPoint>> | undefined => {
-    let normLayout: Partial<ILayout<IAnimatedPoint>> | undefined;
-    let { offset, size } = layout;
+    layout?: IPartialLayout<IAnimatedPointInput>
+): IPartialLayout<IAnimatedPoint> => {
+    let offset = normalizePartialAnimatedPoint(layout?.offset);
+    let size = normalizePartialAnimatedPoint(layout?.size);
+    let normLayout: IPartialLayout<IAnimatedPoint> = {};
     if (offset) {
-        let { x = 0, y = 0 } = offset;
-        if (!normLayout) {
-            normLayout = {};
-        }
-        normLayout.offset = {
-            x: typeof x === 'number' ? new Animated.Value(x) : x,
-            y: typeof y === 'number' ? new Animated.Value(y) : y,
-        };
+        normLayout.offset = offset;
     }
     if (size) {
-        let { x = 0, y = 0 } = size;
-        if (!normLayout) {
-            normLayout = {};
-        }
-        normLayout.size = {
-            x: typeof x === 'number' ? new Animated.Value(x) : x,
-            y: typeof y === 'number' ? new Animated.Value(y) : y,
-        };
+        normLayout.size = size;
     }
-
     return normLayout;
 };
 
