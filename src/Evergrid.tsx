@@ -138,7 +138,7 @@ export default class Evergrid extends React.PureComponent<
 > {
     readonly layoutSources: LayoutSource<any>[];
     readonly viewOffset$: Animated.ValueXY;
-    /** Animated container size. */
+    /** Animated container size in view coordinates. */
     readonly containerSize$: Animated.ValueXY;
     /** Animated container offset in parent view coordinates. */
     readonly containerOffset$: Animated.ValueXY;
