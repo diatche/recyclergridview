@@ -1,4 +1,3 @@
-import React from 'react';
 import {
     Animated,
     GestureResponderEvent,
@@ -11,9 +10,7 @@ import {
     IAnimatedPointInput,
     IAnimatedValueXYInput,
     IAnimationBaseOptions,
-    ILayout,
     IPartialLayout,
-    IPoint,
 } from './types';
 import { zeroPoint } from './util';
 

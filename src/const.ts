@@ -1,3 +1,4 @@
+import { PanResponderCallbacks } from "react-native";
 import { AxisType, IInsets, Direction } from "./types";
 
 export const kHorizontalAxisTypes: AxisType[] = [
@@ -25,3 +26,20 @@ export const kDirectionToAxis: { [D in Direction]: 'x' | 'y' } = {
     horizontal: 'x',
     vertical: 'y',
 };
+
+export const kPanResponderCallbackKeys: (keyof PanResponderCallbacks)[] = [
+    'onMoveShouldSetPanResponder',
+    'onMoveShouldSetPanResponder',
+    'onStartShouldSetPanResponder',
+    'onPanResponderGrant',
+    'onPanResponderMove',
+    'onPanResponderRelease',
+    'onPanResponderTerminate',
+    'onMoveShouldSetPanResponderCapture',
+    'onStartShouldSetPanResponderCapture',
+    'onPanResponderReject',
+    'onPanResponderStart',
+    'onPanResponderEnd',
+    'onPanResponderTerminationRequest',
+    'onShouldBlockNativeResponder',
+];
