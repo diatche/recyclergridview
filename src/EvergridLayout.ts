@@ -600,7 +600,7 @@ export default class EvergridLayout {
 
         let handled = this._panDefaultPrevented;
         let {
-            locationOffset: location,
+            locationOffset: offset,
             panVelocity,
             contentVelocity: velocity,
         } = this;
@@ -609,7 +609,7 @@ export default class EvergridLayout {
         if (isDefaultPan) {
             if (!handled && this.callbacks.snapToLocation) {
                 let scrollInfo: IScrollInfo = {
-                    location: { ...location },
+                    location: { ...offset },
                     velocity,
                     offset: this.viewOffset,
                     scaledVelocity: { ...panVelocity },
@@ -617,12 +617,12 @@ export default class EvergridLayout {
                 let maybeScrollLocation = this.callbacks.snapToLocation(scrollInfo);
                 if (typeof maybeScrollLocation !== 'undefined') {
                     // Scroll to location
-                    let scrollLocation: IPoint = {
-                        ...location,
+                    let scrollOffset: IPoint = {
+                        ...offset,
                         ...maybeScrollLocation,
                     };
-                    this.scrollToLocation({
-                        location: scrollLocation,
+                    this.scrollToOffset({
+                        offset: scrollOffset,
                         spring: { velocity },
                         animated: true,
                     });
@@ -1099,13 +1099,49 @@ export default class EvergridLayout {
         };
     }
 
-    scrollToLocation(
-        options: { location: IPoint } & IAnimationBaseOptions
+    scrollBy(
+        options: { offset: Partial<IPoint> } & IAnimationBaseOptions
     ): Animated.CompositeAnimation | undefined {
-        // console.debug('scrollToLocation: ' + JSON.stringify(options.location));
+        let offset = { ...this._locationOffsetBase };
+        let hasOffset = false;
+        if (typeof options.offset.x !== 'undefined') {
+            offset.x += options.offset.x;
+            hasOffset = true;
+        }
+        if (typeof options.offset.y !== 'undefined') {
+            offset.y += options.offset.y;
+            hasOffset = true;
+        }
+        if (!hasOffset) {
+            return;
+        }
+        return this.scrollToOffset({
+            ...options,
+            offset,
+        });
+    }
+
+    scrollToOffset(
+        options: { offset: Partial<IPoint> } & IAnimationBaseOptions
+    ): Animated.CompositeAnimation | undefined {
         if (this._panStarted) {
             return;
         }
+        let offset = { ...this._locationOffsetBase };
+        let hasOffset = false;
+        if (typeof options.offset.x !== 'undefined') {
+            offset.x = options.offset.x;
+            hasOffset = true;
+        }
+        if (typeof options.offset.y !== 'undefined') {
+            offset.y = options.offset.y;
+            hasOffset = true;
+        }
+        if (!hasOffset) {
+            return;
+        }
+        // console.debug(`scrollToOffset: ${JSON.stringify(offset)}`);
+        
         this._descelerationAnimation?.stop();
         this._descelerationAnimation = undefined;
 
@@ -1113,7 +1149,7 @@ export default class EvergridLayout {
         this._transferViewOffsetToLocation();
 
         if (!options.animated) {
-            this._locationOffsetBase$.setValue(options.location);
+            this._locationOffsetBase$.setValue(offset);
             let info = { finished: true };
             this._onEndDeceleration(info);
             options.onEnd?.(info);
@@ -1124,7 +1160,7 @@ export default class EvergridLayout {
             this._descelerationAnimation = Animated.timing(
                 this._locationOffsetBase$,
                 {
-                    toValue: options.location,
+                    toValue: offset,
                     ...options.timing,
                     useNativeDriver: this.useNativeDriver,
                 }
@@ -1133,7 +1169,7 @@ export default class EvergridLayout {
             this._descelerationAnimation = Animated.spring(
                 this._locationOffsetBase$, // Auto-multiplexed
                 {
-                    toValue: options.location,
+                    toValue: offset,
                     velocity: options.spring?.velocity || this.contentVelocity,
                     bounciness: 0,
                     ...options.spring,
