@@ -159,7 +159,7 @@ export interface IAnimationBaseOptions {
     timing?: Partial<Omit<Animated.TimingAnimationConfig, 'toValue'>>;
 }
 
-export interface PanPressableProps {
+export interface PanPressableCallbacks {
     /**
      * Called when a single tap gesture is detected.
      */
@@ -179,7 +179,9 @@ export interface PanPressableProps {
      * Called when a long-tap gesture is detected.
      */
     onLongPress?: null | ((event: GestureResponderEvent, gestureState: PanResponderGestureState) => void);
+}
 
+export interface PanPressableOptions {
     /**
      * Duration (in milliseconds) from onPressIn before onLongPress is called.
      */

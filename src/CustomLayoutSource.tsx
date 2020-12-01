@@ -33,13 +33,11 @@ export interface CustomLayoutSourceProps extends LayoutSourceProps<T> {
      * Called to determine which items are visible.
      * @param visibleRange The visible bounding points in content coordinates.
      * @param layoutSource This layout source.
-     * @param view The view instance.
      * @returns A set of item indexes.
      */
     getVisibleIndexSet(
         visibleRange: [IPoint, IPoint],
         layoutSource: CustomLayoutSource,
-        view: Grid,
     ): Set<T>;
 }
 
@@ -105,40 +103,38 @@ export default class CustomLayoutSource extends LayoutSource<T, CustomLayoutSour
         }
     }
 
-    shouldUpdate(view: Grid) {
-        let pendingVisibleIndexSet = this.getVisibleIndexSet(view);
+    shouldUpdate() {
+        let pendingVisibleIndexSet = this.getVisibleIndexSet();
         return !isSetEqual(
             pendingVisibleIndexSet,
             this.visibleIndexSet
         );
     }
 
-    didBeginUpdate(view: Grid) {
-        super.didBeginUpdate(view);
-        this.pendingVisibleIndexSet = this.getVisibleIndexSet(view);
+    didBeginUpdate() {
+        super.didBeginUpdate();
+        this.pendingVisibleIndexSet = this.getVisibleIndexSet();
         // console.debug(`[${this.id}] visible items: ` + Object.keys(this.visibleItems).length);
         // console.debug(`[${this.id}] currentVisibleIndexSet: ` + JSON.stringify(Array.from(this.visibleIndexSet)));
         // console.debug(`[${this.id}] pendingVisibleIndexSet: ` + JSON.stringify(Array.from(this.pendingVisibleIndexSet)));
     }
 
-    didEndUpdate(view: Grid) {
+    didEndUpdate() {
         let pendingVisibleIndexSet = this.pendingVisibleIndexSet;
         if (pendingVisibleIndexSet) {
             this.visibleIndexSet = pendingVisibleIndexSet;
         }
-        super.didEndUpdate(view);
+        super.didEndUpdate();
     }
 
     /**
      * Called to determine which items are visible.
-     * @param view The view instance.
      * @returns A set of item indexes.
      */
-    getVisibleIndexSet(view: Grid): Set<T> {
+    getVisibleIndexSet(): Set<T> {
         return this.props.getVisibleIndexSet(
-            this.getVisibleLocationRange(view),
+            this.getVisibleLocationRange(),
             this,
-            view
         );
     }
 }

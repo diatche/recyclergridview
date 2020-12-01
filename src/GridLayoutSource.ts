@@ -20,7 +20,6 @@ declare type T = IPoint;
 export interface GridLayoutSourceProps extends LayoutSourceProps<T> {
     onVisibleRangeChange?: (
         visibleRange: [T, T],
-        view: Grid,
         layoutSource: LayoutSource,
     ) => void;
 }
@@ -97,8 +96,8 @@ export default class GridLayoutSource extends LayoutSource<IPoint, GridLayoutSou
         }
     }
 
-    getVisibleItemAtLocation(p: IPoint, view: Grid): IItem<T> | undefined {
-        let i = this.getGridIndex(p, view, { floor: true });
+    getVisibleItemAtLocation(p: IPoint): IItem<T> | undefined {
+        let i = this.getGridIndex(p, { floor: true });
         return this.getVisibleItem(i);
     }
 
@@ -110,30 +109,30 @@ export default class GridLayoutSource extends LayoutSource<IPoint, GridLayoutSou
         return { ...index };
     }
 
-    shouldUpdate(view: Grid) {
-        let pendingVisibleRange = this.getVisibleGridIndexRange(view);
+    shouldUpdate() {
+        let pendingVisibleRange = this.getVisibleGridIndexRange();
         return !isPointRangeEqual(
             pendingVisibleRange,
             this.visibleRange
         );
     }
 
-    didBeginUpdate(view: Grid) {
-        super.didBeginUpdate(view);
-        this.pendingVisibleRange = this.getVisibleGridIndexRange(view);
+    didBeginUpdate() {
+        super.didBeginUpdate();
+        this.pendingVisibleRange = this.getVisibleGridIndexRange();
         // console.debug(`[${this.id}] visible items: ${Object.keys(this.visibleItems).length} (ok: ${Object.values(this.visibleItems).filter(item => !!item.ref?.current).length})`);
         // console.debug(`[${this.id}] currentVisibleRange: ` + JSON.stringify(this.visibleRange));
         // console.debug(`[${this.id}] pendingVisibleRange: ` + JSON.stringify(this.pendingVisibleRange));
     }
 
-    didEndUpdate(view: Grid) {
+    didEndUpdate() {
         let pendingVisibleRange = this.pendingVisibleRange;
         if (pendingVisibleRange) {
             this.visibleRange = pendingVisibleRange;
         }
-        super.didEndUpdate(view);
+        super.didEndUpdate();
         if (pendingVisibleRange) {
-            this.props.onVisibleRangeChange?.(pendingVisibleRange, view, this);
+            this.props.onVisibleRangeChange?.(pendingVisibleRange, this);
         }
     }
 }

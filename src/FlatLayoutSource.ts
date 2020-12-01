@@ -23,7 +23,6 @@ declare type T = number;
 export interface FlatLayoutSourceProps extends LayoutSourceProps<T> {
     onVisibleRangeChange?: (
         visibleRange: [T, T],
-        view: Grid,
         layoutSource: LayoutSource,
     ) => void;
     horizontal?: boolean;
@@ -93,15 +92,14 @@ export default class FlatLayoutSource extends LayoutSource<T, FlatLayoutSourcePr
         }
     }
     
-    getVisibleItemAtLocation(p: IPoint, view: Grid): IItem<T> | undefined {
-        let i = this.getGridIndex(p, view, { floor: true });
+    getVisibleItemAtLocation(p: IPoint, ): IItem<T> | undefined {
+        let i = this.getGridIndex(p, { floor: true });
         let axis = horizontalBooleanToAxis(this.horizontal);
         return this.getVisibleItem(i[axis]);
     }
 
     willAddItem(
         item: IItem<T>,
-        view: Grid,
         options?: IAnimationBaseOptions
     ) {
         // Shift indexes of visible items
@@ -120,7 +118,6 @@ export default class FlatLayoutSource extends LayoutSource<T, FlatLayoutSourcePr
 
     didRemoveItem(
         { index }: { index: T },
-        view: Grid,
         options?: IAnimationBaseOptions
     ) {
         // Shift indexes of visible items
@@ -141,35 +138,35 @@ export default class FlatLayoutSource extends LayoutSource<T, FlatLayoutSourcePr
         this.visibleRange[1] -= 1;
     }
 
-    shouldUpdate(view: Grid) {
-        let pendingVisibleRange = this.getVisibleRange(view);
+    shouldUpdate() {
+        let pendingVisibleRange = this.getVisibleRange();
         return !isRangeEqual(
             pendingVisibleRange,
             this.visibleRange
         );
     }
 
-    didBeginUpdate(view: Grid) {
-        super.didBeginUpdate(view);
-        this.pendingVisibleRange = this.getVisibleRange(view);
+    didBeginUpdate() {
+        super.didBeginUpdate();
+        this.pendingVisibleRange = this.getVisibleRange();
         // console.debug(`[${this.id}] visible items: ` + Object.keys(this.visibleItems).length);
         // console.debug(`[${this.id}] currentVisibleRange: ` + JSON.stringify(this.visibleRange));
         // console.debug(`[${this.id}] pendingVisibleRange: ` + JSON.stringify(this.pendingVisibleRange));
     }
 
-    didEndUpdate(view: Grid) {
+    didEndUpdate() {
         let pendingVisibleRange = this.pendingVisibleRange;
         if (pendingVisibleRange) {
             this.visibleRange = pendingVisibleRange;
         }
-        super.didEndUpdate(view);
+        super.didEndUpdate();
         if (pendingVisibleRange) {
-            this.props.onVisibleRangeChange?.(pendingVisibleRange, view, this);
+            this.props.onVisibleRangeChange?.(pendingVisibleRange, this);
         }
     }
 
-    getVisibleRange(view: Grid): [T, T] {
-        let [startPoint, endPoint] = this.getVisibleGridIndexRange(view);
+    getVisibleRange(): [T, T] {
+        let [startPoint, endPoint] = this.getVisibleGridIndexRange();
         let axis = horizontalBooleanToAxis(this.horizontal);
         return [startPoint[axis], endPoint[axis]];
     }

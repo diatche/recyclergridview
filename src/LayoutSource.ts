@@ -7,7 +7,7 @@ import {
     IItemLayout,
     ILayout,
     MutableAnimatedPoint,
-    Evergrid as Grid,
+    EvergridLayout,
 } from "./internal";
 import {
     AnimatedValueXYDerivedInput,
@@ -36,6 +36,8 @@ import {
 const kDefaultProps: Partial<LayoutSourceProps<any>> = {
     showDuration: 150,
 };
+
+const kWeakRootKey = {};
 
 let _layoutSourceCounter = 0;
 
@@ -86,8 +88,8 @@ export interface LayoutSourceProps<T> {
      * The default item size in content coordinates.
      * The resulting view size is affected by scale.
      */
-    itemSize?: AnimatedValueXYDerivedInput<Grid>;
-    origin?: AnimatedValueXYDerivedInput<Grid>;
+    itemSize?: AnimatedValueXYDerivedInput<LayoutSource>;
+    origin?: AnimatedValueXYDerivedInput<LayoutSource>;
     /**
      * Where to place the origin for each item.
      * 
@@ -101,7 +103,7 @@ export interface LayoutSourceProps<T> {
      * (if both scales are positive) and in the top
      * right corner if the y scale is negative.
      */
-    itemOrigin?: AnimatedValueXYDerivedInput<Grid>;
+    itemOrigin?: AnimatedValueXYDerivedInput<LayoutSource>;
     /**
      * Set to `{ x: 1, y: 1 }` by default.
      * 
@@ -110,12 +112,12 @@ export interface LayoutSourceProps<T> {
      * the items appear closer and further away
      * respectively.
      */
-    scale?: AnimatedValueXYDerivedInput<Grid>;
+    scale?: AnimatedValueXYDerivedInput<LayoutSource>;
     /**
      * Specifies how much to inset the content grid
      * in view coordinates (pixels).
      */
-    insets?: Partial<IInsets<AnimatedValueDerivedInput<Grid>>>;
+    insets?: Partial<IInsets<AnimatedValueDerivedInput<LayoutSource>>>;
     /**
      * The subviews "stick" to the specified edge.
      * The `origin` determines which location "sticks".
@@ -131,7 +133,7 @@ export interface LayoutSourceProps<T> {
      * By default, the view sets the z-index such that the
      * visual order of items matches the order in which the
      * layout source were added to the view. Customise this
-     * behaviour [in the view]{@link EvergridProps}.
+     * behaviour [in the view]{@link EvergridLayoutProps}.
      * 
      * You can also set each item's z-index individually
      * in the item's layout callback. Refer to the subclasses
@@ -163,7 +165,6 @@ export interface LayoutSourceProps<T> {
      */
     getItemViewLayout?: (
         index: T,
-        view: Grid,
         layoutSource: LayoutSource,
     ) => IPartialLayout<IAnimatedPointInput> | undefined;
     /**
@@ -218,6 +219,8 @@ export default class LayoutSource<
     private _updateInfoQueue: (ILayoutUpdateInfo | undefined)[] = [];
     private _iteratedItemUpdates = false;
 
+    private _weakRootRef: WeakMap<typeof kWeakRootKey, EvergridLayout>;
+
     constructor(props: Props) {
         this.props = {
             ...kDefaultProps,
@@ -247,7 +250,32 @@ export default class LayoutSource<
             left: new Animated.Value(0),
         };
         this._insets = { ...kZeroInsets };
+
+        this._weakRootRef = new WeakMap();
     }
+
+    get root(): EvergridLayout {
+        let root = this._maybeRoot;
+        if (!root) {
+            throw new Error('Root layout not available');
+        }
+        return root;
+    }
+
+    private get _maybeRoot(): EvergridLayout | undefined {
+        let root = this._weakRootRef.get(kWeakRootKey);
+        if (!root) {
+            console.warn(`Layout source "${this.id}" requested root layout, but it is unavailable.`);
+        }
+        return root;
+    }
+
+    private _setRoot(root: EvergridLayout) {
+        if (!root || !(root instanceof EvergridLayout)) {
+            throw new Error('Invalid root layout');
+        }
+        this._weakRootRef.set(kWeakRootKey, root);
+    } 
 
     get itemSize(): IPoint {
         return { ...this._itemSize };
@@ -272,13 +300,17 @@ export default class LayoutSource<
         return this.props.showDuration || 0;
     }
 
-    configure(view: Grid, options?: { zIndex?: number }) {
+    configure(options: {
+        root: EvergridLayout,
+        zIndex?: number,
+    }) {
         this.unconfigure();
 
         let needsForcedUpdate = false;
         let sub = '';
 
-        this.itemSize$ = normalizeAnimatedDerivedValueXY(this.props.itemSize, view);
+        this._setRoot(options.root);
+        this.itemSize$ = normalizeAnimatedDerivedValueXY(this.props.itemSize, this);
         this._itemSize = {
             // @ts-ignore: _value is private
             x: this.itemSize$.x._value || 0,
@@ -287,11 +319,11 @@ export default class LayoutSource<
         };
         sub = this.itemSize$.addListener(p => {
             this._itemSize = p;
-            this.setNeedsUpdate(view);
+            this.setNeedsUpdate();
         });
         this._animatedSubscriptions[sub] = this.itemSize$;
 
-        this.origin$ = normalizeAnimatedDerivedValueXY(this.props.origin, view);
+        this.origin$ = normalizeAnimatedDerivedValueXY(this.props.origin, this);
         this._origin = {
             // @ts-ignore: _value is private
             x: this.origin$.x._value || 0,
@@ -300,11 +332,11 @@ export default class LayoutSource<
         };
         sub = this.origin$.addListener(p => {
             this._origin = p;
-            this.setNeedsUpdate(view);
+            this.setNeedsUpdate();
         });
         this._animatedSubscriptions[sub] = this.origin$;
 
-        this.itemOrigin$ = normalizeAnimatedDerivedValueXY(this.props.itemOrigin, view);
+        this.itemOrigin$ = normalizeAnimatedDerivedValueXY(this.props.itemOrigin, this);
         this._itemOrigin = {
             // @ts-ignore: _value is private
             x: this.itemOrigin$.x._value || 0,
@@ -313,11 +345,11 @@ export default class LayoutSource<
         };
         sub = this.itemOrigin$.addListener(p => {
             this._itemOrigin = p;
-            this.setNeedsUpdate(view);
+            this.setNeedsUpdate();
         });
         this._animatedSubscriptions[sub] = this.itemOrigin$;
 
-        this.scale$ = normalizeAnimatedDerivedValueXY(this.props.scale, view, this._scale);
+        this.scale$ = normalizeAnimatedDerivedValueXY(this.props.scale, this, this._scale);
         this._scale = {
             // @ts-ignore: _value is private
             x: this.scale$.x._value || 0,
@@ -334,13 +366,13 @@ export default class LayoutSource<
             }
             // TODO: Reload all items if scale changes sign.
             this._scale = p;
-            this.setNeedsUpdate(view);
+            this.setNeedsUpdate();
         });
         this._animatedSubscriptions[sub] = this.scale$;
 
         kInsetKeys.forEach(insetKey => {
             let currentInset$ = this.insets$[insetKey];
-            let inset$ = normalizeAnimatedDerivedValue(this.props.insets?.[insetKey], view, currentInset$);
+            let inset$ = normalizeAnimatedDerivedValue(this.props.insets?.[insetKey], this, currentInset$);
             if (currentInset$ !== inset$) {
                 // Modify animated value
                 this.insets$[insetKey] = inset$;
@@ -353,15 +385,15 @@ export default class LayoutSource<
                     return;
                 }
                 this._insets[insetKey] = value;
-                this.setNeedsUpdate(view);
+                this.setNeedsUpdate();
             });
             this._animatedSubscriptions[sub] = inset$;
         });
 
-        this._zIndex = options?.zIndex || 0;
+        this._zIndex = options.zIndex || 0;
 
         if (needsForcedUpdate) {
-            this.updateItems(view, { visible: true });
+            this.updateItems({ visible: true });
         }
     }
 
@@ -426,29 +458,28 @@ export default class LayoutSource<
         item?.ref.current?.setNeedsRender();
     }
 
-    setNeedsUpdate(view: Grid) {
+    setNeedsUpdate() {
         if (this.isUpdating) {
             // console.debug(`[${this.id}] already updating`);
             return;
         }
 
-        if (this.shouldUpdate(view)) {
-            this.scheduleUpdate(view);
+        if (this.shouldUpdate()) {
+            this.scheduleUpdate();
         }
     }
 
     /**
      * Schedules a layout update.
      */
-    scheduleUpdate(view: Grid) {
+    scheduleUpdate() {
         if (this.isUpdating) {
             return;
         }
         this._updateTimer = setTimeout(() => {
             this._updateTimer = 0;
-            this.updateItems(view);
+            this.updateItems();
         }, 1);
-        // this.updateItems(view);
     }
 
     private _resetScheduledUpdate() {
@@ -464,9 +495,8 @@ export default class LayoutSource<
 
     /**
      * Return true when a layout update is needed.
-     * @param view 
      */
-    shouldUpdate(view: Grid) {
+    shouldUpdate() {
         return true;
     }
 
@@ -474,13 +504,12 @@ export default class LayoutSource<
      * Call this method before making layout updates.
      * 
      * Subclasses must call the super implementation first.
-     * @param view 
      */
-    beginUpdate(view: Grid) {
+    beginUpdate() {
         this._updateDepth += 1;
         if (this._updateDepth === 1) {
             this._iteratedItemUpdates = false;
-            this.didBeginUpdate(view);
+            this.didBeginUpdate();
         }
     }
 
@@ -488,9 +517,8 @@ export default class LayoutSource<
      * Call this method after making layout updates.
      * 
      * Subclasses must call the super implementation last.
-     * @param view 
      */
-    endUpdate(view: Grid, info?: ILayoutUpdateInfo) {
+    endUpdate(info?: ILayoutUpdateInfo) {
         this._updateDepth -= 1;
         if (this._updateDepth < 0) {
             this._updateDepth = 0;
@@ -510,9 +538,9 @@ export default class LayoutSource<
         }
         this._updateInfoQueue = [];
 
-        this.didEndUpdate(view);
+        this.didEndUpdate();
         if (needsRender) {
-            view.setNeedsRender();
+            this._maybeRoot?.setNeedsRender();
         }
     }
 
@@ -521,9 +549,8 @@ export default class LayoutSource<
      * 
      * Subclasses must call the super implementation first.
      * Do not call this method directly.
-     * @param view 
      */
-    didBeginUpdate(view: Grid) {
+    didBeginUpdate() {
         // console.debug(`[${this.id}] ` + 'beginUpdate');
     }
 
@@ -532,21 +559,20 @@ export default class LayoutSource<
      * 
      * Subclasses must call the super implementation last.
      * Do not call this method directly.
-     * @param view 
      */
-    didEndUpdate(view: Grid) {
+    didEndUpdate() {
         // console.debug(`[${this.id}] ` + 'endUpdate');
 
         // TODO: Set opacity of newly queued items to 0
     }
 
-    getVisibleLocationRange(view: Grid): [IPoint, IPoint] {
-        let { x: width, y: height } = this.getViewportSize(view);
+    getVisibleLocationRange(): [IPoint, IPoint] {
+        let { x: width, y: height } = this.getViewportSize();
         if (width < 1 || height < 1) {
             return [zeroPoint(), zeroPoint()];
         }
-        let { x, y } = this.getViewportOffset(view);
-        let scale = this.getScale(view);
+        let { x, y } = this.getViewportOffset();
+        let scale = this.getScale();
         let startOffset = {
             x: Math.ceil(x),
             y: Math.floor(y),
@@ -565,8 +591,8 @@ export default class LayoutSource<
             startOffset.y = endOffset.y
             endOffset.y = ySave;
         }
-        let start = this.getLocation(startOffset, view);
-        let end = this.getLocation(endOffset, view);
+        let start = this.getLocation(startOffset);
+        let end = this.getLocation(endOffset);
         if (start.x >= end.x || start.y >= end.y) {
             return [zeroPoint(), zeroPoint()];
         }
@@ -574,22 +600,19 @@ export default class LayoutSource<
     }
 
     getVisibleGridIndexRange(
-        view: Grid,
         options?: {
             partial?: boolean
         }
     ): [IPoint, IPoint] {
-        let range = this.getVisibleLocationRange(view);
+        let range = this.getVisibleLocationRange();
         range[0] = this.getGridIndex(
             range[0],
-            view,
             options?.partial
                 ? undefined
                 : { floor: true }
         );
         range[1] = this.getGridIndex(
             range[1],
-            view, 
             options?.partial
                 ? undefined
                 : { ceil: true }
@@ -597,7 +620,7 @@ export default class LayoutSource<
         return range;
     }
 
-    getStickyContainerLocation(view: Grid): Partial<IPoint> {
+    getStickyContainerLocation(): Partial<IPoint> {
         if (!this.props.stickyEdge) {
             return {};
         }
@@ -609,7 +632,7 @@ export default class LayoutSource<
             default:
                 break;
         }
-        let size = view.containerSize;
+        let size = this.root.containerSize;
         switch (this.props.stickyEdge) {
             case 'bottom':
                 return {
@@ -624,7 +647,7 @@ export default class LayoutSource<
         }
     }
 
-    getStickyContainerLocation$(view: Grid): Partial<IAnimatedPoint> {
+    getStickyContainerLocation$(): Partial<IAnimatedPoint> {
         if (!this.props.stickyEdge) {
             return {};
         }
@@ -636,7 +659,7 @@ export default class LayoutSource<
             default:
                 break;
         }
-        let size = view.containerSize$;
+        let size = this.root.containerSize$;
         switch (this.props.stickyEdge) {
             case 'bottom':
                 return {
@@ -657,12 +680,12 @@ export default class LayoutSource<
         }
     }
 
-    getContainerLocation(point: IPoint, view: Grid): IPoint {
-        let { x, y } = view.getContainerLocation(point, {
+    getContainerLocation(point: IPoint): IPoint {
+        let { x, y } = this.root.getContainerLocation(point, {
             scale: this.scale
         });
-        let p = this.getStickyContainerLocation(view);
-        let scale = this.getScale(view);
+        let p = this.getStickyContainerLocation();
+        let scale = this.getScale();
         
         if (typeof p.x === 'undefined') {
             if (scale.x > 0) {
@@ -684,13 +707,13 @@ export default class LayoutSource<
         return p as IPoint;
     }
 
-    getContainerLocation$(point: IAnimatedPoint | Animated.ValueXY, view: Grid): IAnimatedPoint {
-        let { x, y } = view.getContainerLocation$(point, {
+    getContainerLocation$(point: IAnimatedPoint | Animated.ValueXY): IAnimatedPoint {
+        let { x, y } = this.root.getContainerLocation$(point, {
             scale: this.scale$
         });
-        let p = this.getStickyContainerLocation$(view);
-        let scale = this.getScale(view);
-        let scale$ = this.getScale$(view);
+        let p = this.getStickyContainerLocation$();
+        let scale = this.getScale();
+        let scale$ = this.getScale$();
         
         if (typeof p.x === 'undefined') {
             if (scale.x > 0) {
@@ -736,16 +759,16 @@ export default class LayoutSource<
         return p as IAnimatedPoint;
     }
 
-    getScale(view: Grid): IPoint {
-        let { scale } = view;
+    getScale(): IPoint {
+        let { scale } = this.root;
         return {
             x: this._scale.x * scale.x,
             y: this._scale.y * scale.y,
         };
     }
 
-    getScale$(view: Grid): IAnimatedPoint {
-        let { scale$ } = view;
+    getScale$(): IAnimatedPoint {
+        let { scale$ } = this.root;
         return {
             x: Animated.multiply(this.scale$.x, scale$.x),
             y: Animated.multiply(this.scale$.y, scale$.y),
@@ -757,9 +780,9 @@ export default class LayoutSource<
      * to a point in content coordinates.
      * @param point 
      */
-    getLocation(point: IPoint, view: Grid): IPoint {
-        let { x, y } = view.getLocation(point);
-        let offset = this.getLocationInsetOffset(view);
+    getLocation(point: IPoint): IPoint {
+        let { x, y } = this.root.getLocation(point);
+        let offset = this.getLocationInsetOffset();
         return {
             x: x - this._origin.x + offset.x,
             y: y - this._origin.y + offset.y,
@@ -771,8 +794,8 @@ export default class LayoutSource<
      * when converting from view to content
      * coordinates.
      */
-    getLocationInsetOffset(view: Grid): IPoint {
-        let scale = this.getScale(view);
+    getLocationInsetOffset(): IPoint {
+        let scale = this.getScale();
         return {
             x: Math.min(-this._insets.left / scale.x, this._insets.right / scale.x),
             y: Math.min(-this._insets.top / scale.y, this._insets.bottom / scale.y),
@@ -786,7 +809,6 @@ export default class LayoutSource<
      */
     getGridIndex(
         point: IPoint,
-        view: Grid,
         options?: {
             floor?: boolean;
             ceil?: boolean;
@@ -815,17 +837,17 @@ export default class LayoutSource<
         return i;
     }
 
-    getViewportOffset(view: Grid): IPoint {
-        let { x, y } = view.viewOffset;
-        let scale = this.getScale(view);
+    getViewportOffset(): IPoint {
+        let { x, y } = this.root.viewOffset;
+        let scale = this.getScale();
         return {
             x: x + (scale.x > 0 ? -this._insets.left : this._insets.right),
             y: y + (scale.y > 0 ? -this._insets.top : this._insets.bottom),
         };
     }
     
-    getViewportSize(view: Grid): IPoint {
-        let { x, y } = view.containerSize;
+    getViewportSize(): IPoint {
+        let { x, y } = this.root.containerSize;
         return {
             x: x - this._insets.left - this._insets.right,
             y: y - this._insets.top - this._insets.bottom,
@@ -836,12 +858,8 @@ export default class LayoutSource<
         throw new Error('Not implemented');
     }
 
-    getItemViewLayout$(index: T, view: Grid): IPartialLayout<IAnimatedPointInput> | undefined {
-        return this.props.getItemViewLayout?.(
-            index,
-            view,
-            this,
-        );
+    getItemViewLayout$(index: T): IPartialLayout<IAnimatedPointInput> | undefined {
+        return this.props.getItemViewLayout?.(index, this);
     }
 
     createItemContentLayout$(): ILayout<MutableAnimatedPoint> {
@@ -853,11 +871,10 @@ export default class LayoutSource<
 
     createItemViewLayout$(
         contentLayout$: ILayout<MutableAnimatedPoint>,
-        view: Grid,
         overrides: IPartialLayout<IAnimatedPoint> = {}
     ): ILayout<IAnimatedPoint> {
-        let scale$ = this.getScale$(view);
-        let scale = this.getScale(view);
+        let scale$ = this.getScale$();
+        let scale = this.getScale();
         if (scale.x < 0) {
             scale$.x = negate$(scale$.x);
         }
@@ -870,7 +887,7 @@ export default class LayoutSource<
             offset = overrides.offset as IAnimatedPoint;
         } else {
             offset = {
-                ...this.getContainerLocation$(contentLayout$.offset, view),
+                ...this.getContainerLocation$(contentLayout$.offset),
                 ...overrides.offset,
             };
         }
@@ -922,12 +939,10 @@ export default class LayoutSource<
     /**
      * Override to support adding items.
      * @param item 
-     * @param view 
      * @param options 
      */
     willAddItem(
         { index }: { index: T },
-        view: Grid,
         options?: IAnimationBaseOptions
     ) {
         throw new Error('Adding items is not supported');
@@ -935,23 +950,22 @@ export default class LayoutSource<
 
     addItem(
         { index }: { index: T },
-        view: Grid,
         options?: IAnimationBaseOptions
     ): IItem<T> {
-        this.beginUpdate(view);
+        this.beginUpdate();
         let updateInfo: ILayoutUpdateInfo | undefined;
         try {
-            this.willAddItem({ index }, view, options);
+            this.willAddItem({ index }, options);
             let item = this.dequeueItem(index);
             if (!item) {
-                item = this.createItem(index, view);
+                item = this.createItem(index);
                 updateInfo = { needsRender: true };
             }
-            this.updateItems(view, options);
-            this.endUpdate(view, updateInfo);
+            this.updateItems(options);
+            this.endUpdate(updateInfo);
             return item;
         } catch (error) {
-            this.endUpdate(view, updateInfo);
+            this.endUpdate(updateInfo);
             throw error;
         }
     }
@@ -959,12 +973,10 @@ export default class LayoutSource<
     /**
      * Override to support removing items.
      * @param index 
-     * @param view 
      * @param options 
      */
     didRemoveItem(
         { index }: { index: T },
-        view: Grid,
         options?: IAnimationBaseOptions
     ) {
         throw new Error('Removing items is not supported');
@@ -972,34 +984,33 @@ export default class LayoutSource<
 
     removeItem(
         item: { index: T },
-        view: Grid,
         options?: IAnimationBaseOptions
     ) {
-        this.beginUpdate(view);
+        this.beginUpdate();
         try {
             this.queueItem(item.index);
-            this.didRemoveItem(item, view, options);
-            this.updateItems(view, options);
+            this.didRemoveItem(item, options);
+            this.updateItems(options);
         } finally {
-            this.endUpdate(view);
+            this.endUpdate();
         }
     }
 
-    createItem(index: T, view: Grid) {
+    createItem(index: T) {
         let contentLayout = this.createItemContentLayout$();
         let overrides = normalizePartialAnimatedLayout(
-            this.getItemViewLayout$(index, view)
+            this.getItemViewLayout$(index)
         );
         let viewLayout = this.createItemViewLayout$(
             contentLayout,
-            view,
             overrides
         );
         
+        let root = this.root;
         let item: IItem<T> = {
             index,
-            ref: view.createItemViewRef(),
-            viewKey: view.createItemViewKey(),
+            ref: root.createItemViewRef(),
+            viewKey: root.createItemViewKey(),
             zIndex: this.zIndex,
             contentLayout: {
                 offset: zeroPoint(),
@@ -1142,7 +1153,7 @@ export default class LayoutSource<
      * Override to optimise.
      * @param p 
      */
-    getVisibleItemAtLocation(p: IPoint, view: Grid): IItem<T> | undefined {
+    getVisibleItemAtLocation(p: IPoint): IItem<T> | undefined {
         for (let i of this.visibleIndexes()) {
             let item = this.getVisibleItem(i);
             let contentLayout = item?.contentLayout;
@@ -1207,12 +1218,10 @@ export default class LayoutSource<
      * 
      * See {@link IItemUpdateManyOptions} for more information.
      * 
-     * @param view 
      * @param options Update options.
      * @returns An animation object if an animation was specified, otherwise `undefined`.
      */
     updateItems(
-        view: Grid,
         options?: IItemUpdateManyOptions,
     ): Animated.CompositeAnimation | undefined {
         this._resetScheduledUpdate();
@@ -1232,7 +1241,7 @@ export default class LayoutSource<
             : undefined;
 
         // console.debug(`[${this.id}] updating items...`);
-        this.beginUpdate(view);
+        this.beginUpdate();
         try {
             for (let { add, remove } of this.itemUpdatesOnce()) {
                 if (typeof remove !== 'undefined') {
@@ -1243,7 +1252,7 @@ export default class LayoutSource<
                     // Item shown
                     // console.debug(`[${this.id}] show: ${JSON.stringify(add)}`);
                     if (!this.dequeueItem(add, renderOptions)) {
-                        this.createItem(add, view);
+                        this.createItem(add);
                         needsRender = true;
                         // console.debug(`[${this.id}] need to render ${JSON.stringify(add)}`);
                     }
@@ -1278,7 +1287,7 @@ export default class LayoutSource<
         } catch (error) {
             console.error('Error during update: ' + error?.message || error);
         }
-        this.endUpdate(view, { needsRender });
+        this.endUpdate({ needsRender });
 
         animation = undefined;
         if (animations.length !== 0) {
