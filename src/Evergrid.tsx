@@ -1,7 +1,6 @@
 import React from "react";
 import {
     Animated,
-    AppState,
     ViewProps,
 } from "react-native";
 import ItemView from "./ItemView";

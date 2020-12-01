@@ -38,14 +38,7 @@ const kPanSpeedMin = 0.001;
 
 const kWeakViewKey = {};
 
-const kDefaultProps: Required<Omit<
-    EvergridLayoutProps,
-    'layoutSources'
-    | 'location'
-    | 'scale'
-    | 'anchor'
-    | 'panTarget'
->> = {
+const kDefaultProps: Required<EvergridLayoutPrimitiveProps> = {
     panEnabled: true,
     verticalPanEnabled: true,
     horizontalPanEnabled: true,
@@ -79,9 +72,48 @@ export interface EvergridLayoutCallbacks extends PanPressableCallbacks, PanRespo
     onScaleChanged?: (view: EvergridLayout) => void;
 }
 
-export interface EvergridLayoutProps extends PanPressableOptions {
+interface EvergridLayoutPrimitiveProps extends PanPressableOptions {
+    /** Enabled by default. */
+    panEnabled?: boolean;
+    /** Enabled by default. */
+    verticalPanEnabled?: boolean;
+    /** Enabled by default. */
+    horizontalPanEnabled?: boolean;
+    /**
+     * The first z-index to use when adding layout sources.
+     * Defaults to 10.
+     * 
+     * If a layout source [defines their own]{@link LayoutSourceProps#zIndex}
+     * non-zero z-index, this will not override it.
+     */
+    zIndexStart?: number;
+    /**
+     * The distance between z-indexes in layout sources.
+     * Defaults to 10.
+     * 
+     * If a layout source [defines their own]{@link LayoutSourceProps#zIndex}
+     * non-zero z-index, this will not override it.
+     */
+    zIndexStride?: number;
+    /**
+     * **Not Supported**
+     * 
+     * ~~When `true`, enables performing animations on native side
+     * without going through the javascript bridge on every frame.~~
+     * Falls back to javascript animation when not supported.
+     * See [React Native Documentation](https://reactnative.dev/docs/animated#using-the-native-driver)
+     * for more info.
+     * 
+     * Defaults to `false`.
+     **/
+    useNativeDriver?: boolean;
+}
+
+export interface EvergridLayoutProps extends EvergridLayoutPrimitiveProps {
     layoutSources?: LayoutSource<any>[];
-    location?: AnimatedValueXYDerivedInput<EvergridLayout>;
+    /** Initial offset in content coordinates. */
+    offset?: AnimatedValueXYDerivedInput<EvergridLayout>;
+    /** Scale relating content and view coordinate systems. */
     scale?: AnimatedValueXYDerivedInput<EvergridLayout>;
     /**
      * The point with values in the range 0-1.
@@ -195,7 +227,7 @@ export default class EvergridLayout {
     constructor(options?: EvergridLayoutCallbacks & EvergridLayoutProps) {
         let {
             layoutSources,
-            location,
+            offset,
             scale,
             anchor,
             panTarget,
@@ -297,7 +329,7 @@ export default class EvergridLayout {
         });
         this._animatedSubscriptions[sub] = this.anchor$;
 
-        this._locationOffsetBase$ = normalizeAnimatedDerivedValueXY(location, this);
+        this._locationOffsetBase$ = normalizeAnimatedDerivedValueXY(offset, this);
         this._locationOffsetBase = {
             // @ts-ignore: _value is private
             x: this._locationOffsetBase$.x._value || 0,
@@ -418,7 +450,11 @@ export default class EvergridLayout {
     }
 
     private get _maybeView(): Evergrid | undefined {
-        return this._weakViewRef.get(kWeakViewKey);
+        let view = this._weakViewRef.get(kWeakViewKey);
+        if (!view) {
+            console.warn(`Evergrid layout requested view, but it is unavailable.`);
+        }
+        return view;
     }
 
     set view(view: Evergrid) {

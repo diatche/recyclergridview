@@ -263,7 +263,11 @@ export default class LayoutSource<
     }
 
     private get _maybeRoot(): EvergridLayout | undefined {
-        return this._weakRootRef.get(kWeakRootKey);
+        let root = this._weakRootRef.get(kWeakRootKey);
+        if (!root) {
+            console.warn(`Layout source "${this.id}" requested root layout, but it is unavailable.`);
+        }
+        return root;
     }
 
     private _setRoot(root: EvergridLayout) {
