@@ -1,13 +1,4 @@
 import {
-    kAllAxisTypes,
-    kAllAxisTypeSet,
-    kHorizontalAxisTypes,
-} from './const';
-import {
-    AxisLabel,
-    AxisType,
-    AxisTypeMapping,
-    Direction,
     IItemLayout,
     ILayout,
     IPoint,
@@ -108,33 +99,6 @@ export const maxLayoutPoint = (layout: ILayout<IPoint>): IPoint => {
         y: layout.offset.y + layout.size.y,
     }
 };
-
-export const isAxisType = (axisType: any): axisType is AxisType => {
-    return kAllAxisTypeSet.has(axisType as any);
-};
-
-export const axisDirection = (axisType: AxisType): Direction => {
-    switch (axisType) {
-        case 'topAxis': return 'horizontal';
-        case 'bottomAxis': return 'horizontal';
-        case 'rightAxis': return 'vertical';
-        case 'leftAxis': return 'vertical';
-    }
-}
-
-export const isAxisHorizontal = (axisType: AxisType) => (
-    kHorizontalAxisTypes.indexOf(axisType) >= 0
-);
-
-export function axisTypeMap<T>(iterator: (axisType: AxisType) => T): AxisTypeMapping<T> {
-    let d: Partial<AxisTypeMapping<T>> = {};
-    for (let axisType of kAllAxisTypes) {
-        d[axisType] = iterator(axisType);
-    }
-    return d as AxisTypeMapping<T>;
-}
-
-export const horizontalBooleanToAxis = (isHorizontal: boolean): AxisLabel => isHorizontal ? 'x' : 'y';
 
 export declare type IteratorReturnType = { stop: boolean } | undefined | void;
 

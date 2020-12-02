@@ -13,7 +13,6 @@ import {
 import {
     emptyRange,
     forEachInstertedIndexInRange,
-    horizontalBooleanToAxis,
     isRangeEqual,
     zeroPoint,
 } from "./util";
@@ -44,7 +43,7 @@ export default class FlatLayoutSource extends LayoutSource<T, FlatLayoutSourcePr
     getItemContentLayout(index: T): IItemLayout {
         let offset = zeroPoint();
         let { itemSize: size } = this;
-        let axis = horizontalBooleanToAxis(this.horizontal);
+        let axis: keyof IPoint = this.horizontal ? 'x' : 'y';
         offset[axis] = index * size[axis];
         return { offset, size };
     }
@@ -94,7 +93,7 @@ export default class FlatLayoutSource extends LayoutSource<T, FlatLayoutSourcePr
     
     getVisibleItemAtLocation(p: IPoint, ): IItem<T> | undefined {
         let i = this.getGridIndex(p, { floor: true });
-        let axis = horizontalBooleanToAxis(this.horizontal);
+        let axis: keyof IPoint = this.horizontal ? 'x' : 'y';
         return this.getVisibleItem(i[axis]);
     }
 
@@ -167,7 +166,7 @@ export default class FlatLayoutSource extends LayoutSource<T, FlatLayoutSourcePr
 
     getVisibleRange(): [T, T] {
         let [startPoint, endPoint] = this.getVisibleGridIndexRange();
-        let axis = horizontalBooleanToAxis(this.horizontal);
+        let axis: keyof IPoint = this.horizontal ? 'x' : 'y';
         return [startPoint[axis], endPoint[axis]];
     }
 }
