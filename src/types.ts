@@ -6,13 +6,6 @@ import {
 } from 'react-native';
 import { ItemView } from "./internal";
 
-export declare type AxisType = 'topAxis' | 'rightAxis' | 'bottomAxis' | 'leftAxis';
-export declare type Direction = 'horizontal' | 'vertical';
-
-export declare type AxisTypeMapping<T> = { [K in AxisType]: T };
-
-export declare type AxisLabel = 'x' | 'y';
-
 export interface IPoint {
     x: number;
     y: number;
@@ -37,10 +30,6 @@ export interface IAnimatedItemLayout {
     contentLayout: ILayout<MutableAnimatedPoint>;
     viewLayout: ILayout<IAnimatedPoint>;
     opacity: Animated.Value;
-}
-
-export interface IAnimatedAxisLayout {
-    length: Animated.Value;
 }
 
 export type AnimatedValueInput = number | Animated.Value;
