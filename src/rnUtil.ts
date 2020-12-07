@@ -30,25 +30,10 @@ export const normalizeAnimatedValue = (
     throw new Error('Invalid animated value');
 }
 
-export function normalizeAnimatedDerivedValue<Info>(
-    value: AnimatedValueDerivedInput<Info> | undefined,
-    info: Info,
-    defaults?: Animated.Value,
-): Animated.Value {
-    if (typeof value === 'function') {
-        value = value(info);
-    }
-    return normalizeAnimatedValue(value, defaults);
-}
-
-export function normalizeAnimatedDerivedValueXY<Info>(
-    point: AnimatedValueXYDerivedInput<Info> | undefined,
-    info: Info,
+export const normalizeAnimatedValueXY = (
+    point: Animated.ValueXY | Partial<IAnimatedValueXYInput> | undefined,
     defaults?: IAnimatedValueXYInput | Animated.ValueXY,
-): Animated.ValueXY {
-    if (typeof point === 'function') {
-        point = point(info);
-    }
+): Animated.ValueXY => {
     if (point && point instanceof Animated.ValueXY) {
         return point;
     }
@@ -68,6 +53,28 @@ export function normalizeAnimatedDerivedValueXY<Info>(
         p.y = new Animated.Value(p.y);
     }
     return new Animated.ValueXY(p);
+}
+
+export function normalizeAnimatedDerivedValue<Info>(
+    value: AnimatedValueDerivedInput<Info> | undefined,
+    info: Info,
+    defaults?: Animated.Value,
+): Animated.Value {
+    if (typeof value === 'function') {
+        value = value(info);
+    }
+    return normalizeAnimatedValue(value, defaults);
+}
+
+export function normalizeAnimatedDerivedValueXY<Info>(
+    point: AnimatedValueXYDerivedInput<Info> | undefined,
+    info: Info,
+    defaults?: IAnimatedValueXYInput | Animated.ValueXY,
+): Animated.ValueXY {
+    if (typeof point === 'function') {
+        point = point(info);
+    }
+    return normalizeAnimatedValueXY(point, defaults);
 }
 
 export const normalizePartialAnimatedPoint = (

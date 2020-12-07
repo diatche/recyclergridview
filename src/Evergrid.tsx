@@ -10,9 +10,11 @@ import {
 } from "./internal";
 import {
     IItem,
-    IPoint,
 } from "./types";
 import ScrollLock from "./ScrollLock";
+import InteractiveValueXY from "./InteractiveValueXY";
+
+const kWheelScalePowerBase = 1.02;
 
 export interface EvergridProps extends ViewProps {
     renderItem: (item: IItem<any>, layoutSource: LayoutSource<any>) => React.ReactNode;
@@ -39,6 +41,7 @@ export default class Evergrid extends React.PureComponent<
     private _scrollLocked$ = new Animated.Value(0);
     private _scrollLocked = false;
     private _wheelHandler?: (event: WheelEvent) => void;
+    private _wheelScale?: InteractiveValueXY;
 
     constructor(props: EvergridProps) {
         super(props);
@@ -51,6 +54,11 @@ export default class Evergrid extends React.PureComponent<
         }
 
         this.props.layout.view = this;
+        this._wheelScale = new InteractiveValueXY(
+            this.props.layout.scale$,
+            { default: { x: 1, y: 1 } }
+        );
+        // this._wheelScale = new InteractiveValueXY(this.props.layout.viewOffset$);
 
         if (typeof this.props.renderItem !== 'function') {
             throw new Error('Must renderItem property');
@@ -70,6 +78,8 @@ export default class Evergrid extends React.PureComponent<
 
     subscribeToWheelEvents() {
         this.unsubscribeFromWheelEvents();
+    
+        this._wheelScale?.start();
 
         this._wheelHandler = (event: WheelEvent) => this.onWheelEvent(event);
         this._ref.current?.addEventListener?.(
@@ -81,6 +91,8 @@ export default class Evergrid extends React.PureComponent<
 
     unsubscribeFromWheelEvents() {
         if (this._wheelHandler) {
+            this._wheelScale?.stop();
+
             this._ref.current?.removeEventListener?.(
                 'wheel',
                 this._wheelHandler,
@@ -100,14 +112,17 @@ export default class Evergrid extends React.PureComponent<
                 pixelStep = 100;
         }
         let pixels = pixelStep * event.deltaY;
-        let sign = pixels >= 0 ? 1 : -1;
-        let scaleCoef = Math.pow(1.01, sign * Math.log10(Math.abs(pixels)));
-        let scale = this.props.layout.scale;
-        let newScale: IPoint = {
-            x: scale.x * scaleCoef,
-            y: scale.y * scaleCoef,
-        };
-        console.debug('scaleCoef: ' + scaleCoef);
+        let sign = pixels >= 0 ? -1 : 1;
+        let mag = Math.abs(pixels);
+        if (mag < 1) {
+            return;
+        }
+        let scaleCoef = Math.pow(kWheelScalePowerBase, sign * Math.log10(mag)) || 1;
+
+        this._wheelScale?.multiply({
+            x: scaleCoef,
+            y: scaleCoef,
+        });
     }
 
     lockScroll() {
