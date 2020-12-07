@@ -4,9 +4,13 @@ import {
     ViewProps,
 } from "react-native";
 import ItemView from "./ItemView";
-import { EvergridLayout, LayoutSource } from "./internal";
+import {
+    EvergridLayout,
+    LayoutSource,
+} from "./internal";
 import {
     IItem,
+    IPoint,
 } from "./types";
 import ScrollLock from "./ScrollLock";
 
@@ -28,11 +32,13 @@ export default class Evergrid extends React.PureComponent<
     EvergridProps,
     EvergridState
 > {
+    private _ref = React.createRef<any>();
     private _needsRender = true;
     private _needsFirstRender = true;
     private _renderTimer: any;
     private _scrollLocked$ = new Animated.Value(0);
     private _scrollLocked = false;
+    private _wheelHandler?: (event: WheelEvent) => void;
 
     constructor(props: EvergridProps) {
         super(props);
@@ -53,11 +59,55 @@ export default class Evergrid extends React.PureComponent<
 
     componentDidMount() {
         this.props.layout.componentDidMount();
+        this.subscribeToWheelEvents();
     }
 
     componentWillUnmount() {
+        this.unsubscribeFromWheelEvents();
         this.cancelScheduledRender();
         this.props.layout.componentWillUnmount();
+    }
+
+    subscribeToWheelEvents() {
+        this.unsubscribeFromWheelEvents();
+
+        this._wheelHandler = (event: WheelEvent) => this.onWheelEvent(event);
+        this._ref.current?.addEventListener?.(
+            'wheel',
+            this._wheelHandler,
+            { passive: true },
+        );
+    }
+
+    unsubscribeFromWheelEvents() {
+        if (this._wheelHandler) {
+            this._ref.current?.removeEventListener?.(
+                'wheel',
+                this._wheelHandler,
+            );
+            this._wheelHandler = undefined;
+        }
+    }
+
+    onWheelEvent(event: WheelEvent) {
+        let pixelStep = 10;
+        switch (event.deltaMode) {
+            case WheelEvent.DOM_DELTA_PIXEL:
+                pixelStep = 1;
+            case WheelEvent.DOM_DELTA_LINE:
+                pixelStep = 10;
+            case WheelEvent.DOM_DELTA_PAGE:
+                pixelStep = 100;
+        }
+        let pixels = pixelStep * event.deltaY;
+        let sign = pixels >= 0 ? 1 : -1;
+        let scaleCoef = Math.pow(1.01, sign * Math.log10(Math.abs(pixels)));
+        let scale = this.props.layout.scale;
+        let newScale: IPoint = {
+            x: scale.x * scaleCoef,
+            y: scale.y * scaleCoef,
+        };
+        console.debug('scaleCoef: ' + scaleCoef);
     }
 
     lockScroll() {
@@ -132,6 +182,7 @@ export default class Evergrid extends React.PureComponent<
             <Animated.View
                 {...this.props}
                 {...this.props.layout.panResponder?.panHandlers}
+                ref={this._ref}
                 style={[
                     this.props.style,
                     {
