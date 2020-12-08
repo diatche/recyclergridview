@@ -216,7 +216,7 @@ export interface LayoutSourceProps<T> {
     showDuration?: number;
 }
 
-export default class LayoutSource<
+export default abstract class LayoutSource<
     T = any,
     Props extends LayoutSourceProps<T> = LayoutSourceProps<T>
 > {
@@ -444,9 +444,7 @@ export default class LayoutSource<
         }
     }
 
-    * itemUpdates(): Generator<IItemUpdate<T>> {
-        throw new Error('Not implemented');
-    }
+    abstract itemUpdates(): Generator<IItemUpdate<T>>;
 
     /**
      * Iterates through updates only once during
@@ -464,9 +462,7 @@ export default class LayoutSource<
         return undefined;
     }
 
-    * visibleIndexes(): Generator<T> {
-        throw new Error('Not implemented');
-    }
+    abstract visibleIndexes(): Generator<T>;
 
     isEqualIndexes(i1: T, i2: T): boolean {
         return i1 === i2;
@@ -877,9 +873,7 @@ export default class LayoutSource<
         };
     }
 
-    getItemContentLayout(index: T): IItemLayout {
-        throw new Error('Not implemented');
-    }
+    abstract getItemContentLayout(index: T): IItemLayout;
 
     getItemViewLayout$(index: T): IPartialLayout<IAnimatedPointInput> | undefined {
         return this.props.getItemViewLayout?.(index, this);
@@ -1164,13 +1158,9 @@ export default class LayoutSource<
         return animation;
     }
 
-    getVisibleItem(index: T): IItem<T> | undefined {
-        throw new Error('Not implemented');
-    }
+    abstract getVisibleItem(index: T): IItem<T> | undefined;
 
-    setVisibleItem(index: T, item: IItem<T> | undefined) {
-        throw new Error('Not implemented');
-    }
+    abstract setVisibleItem(index: T, item: IItem<T> | undefined): void;
 
     /**
      * Override to optimise.
