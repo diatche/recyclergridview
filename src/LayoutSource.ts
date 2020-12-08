@@ -89,7 +89,13 @@ export interface LayoutSourceProps<T> {
      * The resulting view size is affected by scale.
      */
     itemSize?: AnimatedValueXYDerivedInput<LayoutSource>;
+
+    /**
+     * The location in (content coordinates) where the
+     * zero index is displayed.
+     */
     origin?: AnimatedValueXYDerivedInput<LayoutSource>;
+
     /**
      * Where to place the origin for each item.
      * 
@@ -104,6 +110,7 @@ export interface LayoutSourceProps<T> {
      * right corner if the y scale is negative.
      */
     itemOrigin?: AnimatedValueXYDerivedInput<LayoutSource>;
+
     /**
      * Set to `{ x: 1, y: 1 }` by default.
      * 
@@ -113,11 +120,13 @@ export interface LayoutSourceProps<T> {
      * respectively.
      */
     scale?: AnimatedValueXYDerivedInput<LayoutSource>;
+
     /**
      * Specifies how much to inset the content grid
      * in view coordinates (pixels).
      */
     insets?: Partial<IInsets<AnimatedValueDerivedInput<LayoutSource>>>;
+
     /**
      * The subviews "stick" to the specified edge.
      * The `origin` determines which location "sticks".
@@ -126,6 +135,7 @@ export interface LayoutSourceProps<T> {
      * in `insets`.
      **/
     stickyEdge?: InsetEdge;
+
     /**
      * Setting a non-zero z-index here will set the default
      * z-index for all items.
@@ -140,13 +150,21 @@ export interface LayoutSourceProps<T> {
      * item layout method for more information.
      */
     zIndex?: number;
+
+    /**
+     * Default reuse ID. Customise with `getReuseID()`.
+     */
     reuseID?: string;
+
     /**
      * All items are reused by default.
      * 
      * Passing an empty string does not reuse that item.
+     * 
+     * If this is not specified, uses `reuseID`.
      **/
     getReuseID?: (index: T) => string;
+
     /**
      * Rendering to DOM is an expensive operation. If a
      * render of this item is not needed on update,
@@ -159,6 +177,7 @@ export interface LayoutSourceProps<T> {
         item: IItem<T>,
         previous: IItemSnapshot<T>,
     ) => boolean;
+
     /**
      * Overrides item view layout. Does not scale.
      * Can override offset, size or both.
@@ -167,20 +186,24 @@ export interface LayoutSourceProps<T> {
         index: T,
         layoutSource: LayoutSource,
     ) => IPartialLayout<IAnimatedPointInput> | undefined;
+
     /**
      * Called after an item is created.
      */
     didCreateItem?: (item: IItem<T>) => void;
+
     /**
      * Called before an item is displayed after
      * an update or creation.
      */
     willShowItem?: (item: IItem<T>) => void;
+
     /**
      * Called before an item is hidden after
      * moving out of visible bounds.
      */
     willHideItem?: (item: IItem<T>) => void;
+    
     /**
      * The duration in milliseconds of the fade-in animation,
      * when a new item is rendered. Ignored when an item is
