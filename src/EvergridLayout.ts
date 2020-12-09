@@ -292,7 +292,10 @@ export default class EvergridLayout {
         });
         this._animatedSubscriptions[sub] = this.containerOffset$;
 
-        this.scale$ = normalizeAnimatedDerivedValueXY(scale, this, { x: 1, y: 1});
+        this.scale$ = normalizeAnimatedDerivedValueXY(scale, {
+            info: this,
+            defaults: { x: 1, y: 1}
+        });
         this._scale = {
             // @ts-ignore: _value is private
             x: this.scale$.x._value || 0,
@@ -313,7 +316,9 @@ export default class EvergridLayout {
         });
         this._animatedSubscriptions[sub] = this.scale$;
 
-        this.anchor$ = normalizeAnimatedDerivedValueXY(anchor, this);
+        this.anchor$ = normalizeAnimatedDerivedValueXY(anchor, {
+            info: this,
+        });
         this._anchor = {
             // @ts-ignore: _value is private
             x: this.anchor$.x._value || 0,
@@ -329,7 +334,9 @@ export default class EvergridLayout {
         });
         this._animatedSubscriptions[sub] = this.anchor$;
 
-        this._locationOffsetBase$ = normalizeAnimatedDerivedValueXY(offset, this);
+        this._locationOffsetBase$ = normalizeAnimatedDerivedValueXY(offset, {
+            info: this,
+        });
         this._locationOffsetBase = {
             // @ts-ignore: _value is private
             x: this._locationOffsetBase$.x._value || 0,

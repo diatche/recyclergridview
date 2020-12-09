@@ -3,6 +3,7 @@ import {
     forEachInstertedIndexInSet,
     forEachInstertedIndexInRange,
     forEachInstertedPointInRange,
+    parseRelativeValue,
 } from '../src/util';
 
 
@@ -136,6 +137,25 @@ describe('util', () => {
                 { x: 1, y: 2 },
                 { x: 2, y: 2 },
             ]);
+        });
+    });
+
+    describe('parseRelativeValue', () => {
+
+        it('should parse percentage', () => {
+            expect(parseRelativeValue('100%')).toBe(1);
+            expect(parseRelativeValue('20%')).toBe(0.2);
+            expect(parseRelativeValue('3%')).toBe(0.03);
+            expect(parseRelativeValue('0.4%')).toBe(0.004);
+            expect(parseRelativeValue('-100%')).toBe(-1);
+        });
+
+        it('should parse absolute value', () => {
+            expect(parseRelativeValue('100')).toBe(100);
+            expect(parseRelativeValue('20')).toBe(20);
+            expect(parseRelativeValue('3')).toBe(3);
+            expect(parseRelativeValue('0.4')).toBe(0.4);
+            expect(parseRelativeValue('-100')).toBe(-100);
         });
     });
 });

@@ -205,6 +205,15 @@ export function iterateAll<T>(iterable: Iterable<T>): T[] {
     return values;
 }
 
+export const parseRelativeValue = (value: string): number => {
+    let coef = 1;
+    if (value.endsWith('%')) {
+        coef = 0.01;
+        value = value.substring(0, value.length - 1);
+    }
+    return parseFloat(value) * coef;
+};
+
 // export const estimateFinalDecayValue = (
 //     {
 //         x,
