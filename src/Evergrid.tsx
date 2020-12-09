@@ -43,6 +43,7 @@ export default class Evergrid extends React.PureComponent<
     private _renderTimer: any;
     private _scrollLocked$ = new Animated.Value(0);
     private _scrollLocked = false;
+    private _needsItemRenderMapUpdate = true;
 
     constructor(props: EvergridProps) {
         super(props);
@@ -54,10 +55,8 @@ export default class Evergrid extends React.PureComponent<
             throw new Error('Must specify valid layout');
         }
 
-        this.props.layout.view = this;
-
         this.itemRenderMap = {};
-        this.updateItemRenderMap();
+        this.props.layout.configure(this);
     }
 
     componentDidMount() {
@@ -69,7 +68,13 @@ export default class Evergrid extends React.PureComponent<
         this.props.layout.componentWillUnmount();
     }
 
+    setNeedsItemRenderMapUpdate() {
+        this._needsItemRenderMapUpdate = true;
+    }
+
     updateItemRenderMap() {
+        this._needsItemRenderMapUpdate = false;
+
         let itemRenderMap: ItemRenderMap = {};
         for (let layoutSource of this.props.layout.layoutSources) {
             let funcOrObject = this.props.renderItem[layoutSource.id];
@@ -142,6 +147,9 @@ export default class Evergrid extends React.PureComponent<
     render() {
         // console.debug('render recycler grid view');
         // console.debug('begin render recycler grid view');
+        if (this._needsItemRenderMapUpdate) {
+            this.updateItemRenderMap();
+        }
 
         let itemViews: React.ReactNode[] = [];
         if (!this._needsFirstRender) {
@@ -244,6 +252,9 @@ export default class Evergrid extends React.PureComponent<
 
     private _renderItem<T>(item: IItem<T>, layoutSource: LayoutSource<T>): React.ReactNode {
         let renderer = this.itemRenderMap[layoutSource.id];
+        if (!renderer) {
+            throw new Error(`Must specify a valid render method for layout source "${layoutSource.id}"`);
+        }
         // let viewKey = item.viewKey;
         // if (!viewKey) {
         //     viewKey = String(++this._itemViewCounter);

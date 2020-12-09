@@ -424,6 +424,21 @@ export default class EvergridLayout {
         this.setLayoutSources(layoutSources || []);
     }
 
+    /**
+     * Called when the layout is added to the view
+     * and before the view is mounted.
+     * 
+     * Subclasses must call the super implementation.
+     * 
+     * @param view 
+     */
+    configure(view: Evergrid) {
+        this.view = view;
+        this.componentDidInit();
+    }
+
+    componentDidInit() {}
+
     componentDidMount() {
         // this._mounted = true;
         this._bindToAppEvents();
@@ -466,12 +481,10 @@ export default class EvergridLayout {
     }
 
     setLayoutSources(layoutSources: LayoutSource[]) {
-        // let needsRender = false;
         for (let layoutSource of this._layoutSources) {
             if (layoutSources.indexOf(layoutSource) < 0) {
                 // Removed layout source
                 layoutSource.unconfigure();
-                // needsRender = true;
             }
         }
 
@@ -486,13 +499,61 @@ export default class EvergridLayout {
                     root: this,
                     zIndex: this.zIndexStart + i * this.zIndexStride,
                 });
-                // needsRender = true;
             }
         }
 
-        // if (needsRender) {
-        //     this.setNeedsRender();
-        // }
+        this._maybeView?.setNeedsItemRenderMapUpdate();
+        this._maybeView?.setNeedsRender();
+    }
+
+    addLayoutSource(
+        layoutSource: LayoutSource,
+        options?: {
+            zIndex?: number;
+            strict?: boolean;
+        }
+    ) {
+        let {
+            strict = false,
+            zIndex = this.zIndexStart + this._layoutSources.length * this.zIndexStride,
+        } = options || {};
+
+        let i = this._layoutSources.indexOf(layoutSource);
+        if (i >= 0) {
+            if (strict) {
+                throw new Error('Layout source is already added.');
+            }
+            return;
+        }
+
+        this._layoutSources.push(layoutSource);
+        layoutSource.configure({
+            root: this,
+            zIndex,
+        });
+
+        this._maybeView?.setNeedsItemRenderMapUpdate();
+        this._maybeView?.setNeedsRender();
+    }
+
+    removeLayoutSource(
+        layoutSource: LayoutSource,
+        options?: {
+            strict?: boolean;
+        }
+    ) {
+        let i = this._layoutSources.indexOf(layoutSource);
+        if (i < 0) {
+            if (options?.strict) {
+                throw new Error('Layout source not found');
+            }
+            return;
+        }
+        this._layoutSources.splice(i, 1);
+        layoutSource.unconfigure();
+        
+        this._maybeView?.setNeedsItemRenderMapUpdate();
+        this._maybeView?.setNeedsRender();
     }
 
     get isPanningContent() {

@@ -877,7 +877,7 @@ export default abstract class LayoutSource<
     }
 
     getViewportOffset(): IPoint {
-        let { x, y } = this.root.viewOffset;
+        let { x, y } = this._maybeRoot?.viewOffset || zeroPoint();
         let scale = this.getScale();
         return {
             x: x + (scale.x > 0 ? -this._insets.left : this._insets.right),
@@ -886,7 +886,7 @@ export default abstract class LayoutSource<
     }
     
     getViewportSize(): IPoint {
-        let { x, y } = this.root.containerSize;
+        let { x, y } = this._maybeRoot?.containerSize || zeroPoint();
         return {
             x: x - this._insets.left - this._insets.right,
             y: y - this._insets.top - this._insets.bottom,
