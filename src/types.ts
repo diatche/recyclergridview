@@ -48,8 +48,8 @@ export interface IAnimatedPoint {
 }
 
 export interface IAnimatedPointInput {
-    x: number | Animated.Value | Animated.AnimatedInterpolation;
-    y: number | Animated.Value | Animated.AnimatedInterpolation;
+    x: string | number | Animated.Value | Animated.AnimatedInterpolation;
+    y: string | number | Animated.Value | Animated.AnimatedInterpolation;
 }
 
 export type MutableAnimatedPoint = Animated.ValueXY | {

@@ -12,53 +12,90 @@ import {
     IAnimationBaseOptions,
     IPartialLayout,
 } from './types';
-import { zeroPoint } from './util';
+import { parseRelativeValue, zeroPoint } from './util';
 
 export const normalizeAnimatedValue = (
-    value: Animated.Value | number | undefined,
-    defaults?: Animated.Value,
+    x: Animated.Value | number | string | undefined,
+    options?: {
+        defaults?: Animated.Value;
+    },
 ): Animated.Value => {
-    if (typeof value === 'undefined') {
-        return defaults || new Animated.Value(0); 
+    switch (typeof x) {
+        case 'undefined':
+            return options?.defaults || new Animated.Value(0);
+        case 'number':
+            return new Animated.Value(x);
+        case 'object':
+            if (x instanceof Animated.Value) {
+                return x;
+            }
+            break;
     }
-    if (typeof value === 'number') {
-        return new Animated.Value(value);
+    throw new Error('Invalid animated value');
+}
+
+export const normalizeAnimatedValueOrInterpolation = (
+    x: Animated.AnimatedInterpolation | Animated.Value | number | string | undefined,
+    options?: {
+        relativeLength?: Animated.Value | Animated.AnimatedInterpolation | number;
+        defaults?: Animated.Value;
+    },
+): Animated.Value | Animated.AnimatedInterpolation => {
+    if (x === null) {
+        x = undefined;
     }
-    if (typeof value === 'object' && value instanceof Animated.Value) {
-       return value; 
+    switch (typeof x) {
+        case 'undefined':
+            return options?.defaults || new Animated.Value(0);
+        case 'number':
+            return new Animated.Value(x);
+        case 'object':
+            // Assume animated value or interpolation
+            return x;
+        case 'string':
+            let unity = options?.relativeLength;
+            if (!unity) {
+                throw new Error('Must specify relative length to support relative value');
+            }
+            let coef = parseRelativeValue(x);
+            return coef === 1
+                ? normalizeAnimatedValueOrInterpolation(unity)
+                : Animated.multiply(coef, unity);
     }
     throw new Error('Invalid animated value');
 }
 
 export function normalizeAnimatedDerivedValue<Info>(
     value: AnimatedValueDerivedInput<Info> | undefined,
-    info: Info,
-    defaults?: Animated.Value,
+    options: {
+        info: Info,
+        defaults?: Animated.Value;
+    },
 ): Animated.Value {
     if (typeof value === 'function') {
-        value = value(info);
+        value = value(options.info);
     }
-    return normalizeAnimatedValue(value, defaults);
+    return normalizeAnimatedValue(value, options);
 }
 
 export function normalizeAnimatedDerivedValueXY<Info>(
     point: AnimatedValueXYDerivedInput<Info> | undefined,
-    info: Info,
-    defaults?: IAnimatedValueXYInput | Animated.ValueXY,
+    options: {
+        info: Info,
+        defaults?: IAnimatedValueXYInput | Animated.ValueXY,
+    },
 ): Animated.ValueXY {
     if (typeof point === 'function') {
-        point = point(info);
+        point = point(options.info);
     }
     if (point && point instanceof Animated.ValueXY) {
         return point;
     }
-    let p: IAnimatedValueXYInput = zeroPoint();
-    if (defaults) {
-        p = { ...defaults };
-    }
-    if (point) {
-        p = { ...p, ...point };
-    }
+    let p: IAnimatedValueXYInput = {
+        ...zeroPoint(),
+        ...options.defaults,
+        ...point,
+    };
     // Both x and y must be a number or an animated value
     // Mixing types is not allowed.
     if (typeof p.x === 'number' && typeof p.y !== 'number') {
@@ -71,34 +108,34 @@ export function normalizeAnimatedDerivedValueXY<Info>(
 }
 
 export const normalizePartialAnimatedPoint = (
-    point: Partial<IAnimatedPointInput> = {}
+    point?: Partial<IAnimatedPointInput>,
+    options?: {
+        relativeSize?: Partial<IAnimatedPoint>;
+    },
 ): Partial<IAnimatedPoint> => {
-    let { x, y } = point;
+    let { x, y } = point || {};
     let normPoint: Partial<IAnimatedPoint> = {};
-    switch (typeof x) {
-        case 'number':
-            normPoint.x = new Animated.Value(x);
-            break;
-        case 'object':
-            normPoint.x = x;
-            break;
+    if (typeof x !== 'undefined') {
+        normPoint.x = normalizeAnimatedValueOrInterpolation(point?.x, {
+            relativeLength: options?.relativeSize?.x,
+        });
     }
-    switch (typeof y) {
-        case 'number':
-            normPoint.y = new Animated.Value(y);
-            break;
-        case 'object':
-            normPoint.y = y;
-            break;
+    if (typeof y !== 'undefined') {
+        normPoint.y = normalizeAnimatedValueOrInterpolation(point?.y, {
+            relativeLength: options?.relativeSize?.y,
+        });
     }
     return normPoint;
 };
 
 export const normalizePartialAnimatedLayout = (
-    layout?: IPartialLayout<IAnimatedPointInput>
+    layout?: IPartialLayout<IAnimatedPointInput>,
+    options?: {
+        relativeSize?: Partial<IAnimatedPoint>;
+    },
 ): IPartialLayout<IAnimatedPoint> => {
-    let offset = normalizePartialAnimatedPoint(layout?.offset);
-    let size = normalizePartialAnimatedPoint(layout?.size);
+    let offset = normalizePartialAnimatedPoint(layout?.offset, options);
+    let size = normalizePartialAnimatedPoint(layout?.size, options);
     let normLayout: IPartialLayout<IAnimatedPoint> = {};
     if (offset) {
         normLayout.offset = offset;

@@ -333,7 +333,9 @@ export default abstract class LayoutSource<
         let sub = '';
 
         this._setRoot(options.root);
-        this.itemSize$ = normalizeAnimatedDerivedValueXY(this.props.itemSize, this);
+        this.itemSize$ = normalizeAnimatedDerivedValueXY(this.props.itemSize, {
+            info: this,
+        });
         this._itemSize = {
             // @ts-ignore: _value is private
             x: this.itemSize$.x._value || 0,
@@ -346,7 +348,9 @@ export default abstract class LayoutSource<
         });
         this._animatedSubscriptions[sub] = this.itemSize$;
 
-        this.origin$ = normalizeAnimatedDerivedValueXY(this.props.origin, this);
+        this.origin$ = normalizeAnimatedDerivedValueXY(this.props.origin, {
+            info: this,
+        });
         this._origin = {
             // @ts-ignore: _value is private
             x: this.origin$.x._value || 0,
@@ -359,7 +363,9 @@ export default abstract class LayoutSource<
         });
         this._animatedSubscriptions[sub] = this.origin$;
 
-        this.itemOrigin$ = normalizeAnimatedDerivedValueXY(this.props.itemOrigin, this);
+        this.itemOrigin$ = normalizeAnimatedDerivedValueXY(this.props.itemOrigin, {
+            info: this,
+        });
         this._itemOrigin = {
             // @ts-ignore: _value is private
             x: this.itemOrigin$.x._value || 0,
@@ -372,7 +378,10 @@ export default abstract class LayoutSource<
         });
         this._animatedSubscriptions[sub] = this.itemOrigin$;
 
-        this.scale$ = normalizeAnimatedDerivedValueXY(this.props.scale, this, this._scale);
+        this.scale$ = normalizeAnimatedDerivedValueXY(this.props.scale, {
+            info: this,
+            defaults: this._scale,
+        });
         this._scale = {
             // @ts-ignore: _value is private
             x: this.scale$.x._value || 0,
@@ -395,7 +404,10 @@ export default abstract class LayoutSource<
 
         kInsetKeys.forEach(insetKey => {
             let currentInset$ = this.insets$[insetKey];
-            let inset$ = normalizeAnimatedDerivedValue(this.props.insets?.[insetKey], this, currentInset$);
+            let inset$ = normalizeAnimatedDerivedValue(this.props.insets?.[insetKey], {
+                info: this,
+                defaults: currentInset$,
+            });
             if (currentInset$ !== inset$) {
                 // Modify animated value
                 this.insets$[insetKey] = inset$;
@@ -1016,7 +1028,10 @@ export default abstract class LayoutSource<
     createItem(index: T) {
         let contentLayout = this.createItemContentLayout$();
         let overrides = normalizePartialAnimatedLayout(
-            this.getItemViewLayout$(index)
+            this.getItemViewLayout$(index),
+            {
+                relativeSize: this.root.containerSize$,
+            }
         );
         let viewLayout = this.createItemViewLayout$(
             contentLayout,
