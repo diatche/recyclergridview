@@ -23,6 +23,7 @@ import {
 import {
     getLazyArray,
     isPointInsideItemLayout,
+    weakref,
     zeroPoint,
 } from "./util";
 import {
@@ -36,8 +37,6 @@ import {
 const kDefaultProps: Partial<LayoutSourceProps<any>> = {
     showDuration: 150,
 };
-
-const kWeakRootKey = {};
 
 let _layoutSourceCounter = 0;
 let _layoutSourceIDs = new Set<string>();
@@ -263,7 +262,7 @@ export default abstract class LayoutSource<
     private _updateInfoQueue: (ILayoutUpdateInfo | undefined)[] = [];
     private _iteratedItemUpdates = false;
 
-    private _weakRootRef: WeakMap<typeof kWeakRootKey, EvergridLayout>;
+    private _weakRootRef = weakref<EvergridLayout>();
 
     constructor(props: Props) {
         this.props = {
@@ -292,31 +291,21 @@ export default abstract class LayoutSource<
             left: new Animated.Value(0),
         };
         this._insets = { ...kZeroInsets };
-
-        this._weakRootRef = new WeakMap();
     }
 
     get root(): EvergridLayout {
-        let root = this._maybeRoot;
-        if (!root) {
-            throw new Error('Root layout not available');
-        }
-        return root;
+        return this._weakRootRef.getOrFail();
     }
 
     private get _maybeRoot(): EvergridLayout | undefined {
-        let root = this._weakRootRef.get(kWeakRootKey);
-        if (!root) {
-            console.warn(`Layout source "${this.id}" requested root layout, but it is unavailable.`);
-        }
-        return root;
+        return this._weakRootRef.get();
     }
 
     private _setRoot(root: EvergridLayout) {
         if (!root || !(root instanceof EvergridLayout)) {
             throw new Error('Invalid root layout');
         }
-        this._weakRootRef.set(kWeakRootKey, root);
+        this._weakRootRef.set(root);
     } 
 
     get itemSize(): IPoint {

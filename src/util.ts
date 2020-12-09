@@ -214,6 +214,26 @@ export const parseRelativeValue = (value: string): number => {
     return parseFloat(value) * coef;
 };
 
+export function weakref<T = any>(value?: T) {
+    const _key: any = {};
+    let _map = new WeakMap<typeof _key, T>(
+        typeof value !== 'undefined'
+            ? [_key, value]
+            : undefined
+    );
+    return {
+        get: (): T | undefined => _map.get(_key),
+        getOrFail: (): T => {
+            let value = _map.get(_key);
+            if (typeof value === 'undefined') {
+                throw new Error('Accessing weak value which was destroyed');
+            }
+            return value;
+        },
+        set: (value: T) => _map.set(_key, value),
+    };
+};
+
 // export const estimateFinalDecayValue = (
 //     {
 //         x,

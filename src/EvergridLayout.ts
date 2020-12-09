@@ -24,6 +24,7 @@ import {
     PanPressableCallbacks,
 } from "./types";
 import {
+    weakref,
     zeroPoint,
 } from "./util";
 import {
@@ -35,8 +36,6 @@ import {
 } from "./rnUtil";
 
 const kPanSpeedMin = 0.001;
-
-const kWeakViewKey = {};
 
 const kDefaultProps: Required<EvergridLayoutPrimitiveProps> = {
     panEnabled: true,
@@ -195,7 +194,7 @@ export default class EvergridLayout {
     readonly anchor$: Animated.ValueXY;
     readonly panResponder?: PanResponderInstance;
     
-    private _weakViewRef: WeakMap<typeof kWeakViewKey, Evergrid>;
+    private _weakViewRef = weakref<Evergrid>();
 
     private _locationOffsetBase$: Animated.ValueXY;
     private _locationOffsetBase: IPoint;
@@ -244,7 +243,6 @@ export default class EvergridLayout {
             onScaleChanged,
         } = { ...kDefaultProps, ...options };
 
-        this._weakViewRef = new WeakMap();
         this._layoutSources = [];
 
         this.zIndexStart = zIndexStart;
@@ -449,26 +447,18 @@ export default class EvergridLayout {
     }
 
     get view(): Evergrid {
-        let view = this._maybeView;
-        if (!view) {
-            throw new Error('View not available');
-        }
-        return view;
+        return this._weakViewRef.getOrFail();
     }
 
     private get _maybeView(): Evergrid | undefined {
-        let view = this._weakViewRef.get(kWeakViewKey);
-        if (!view) {
-            console.warn(`Evergrid layout requested view, but it is unavailable.`);
-        }
-        return view;
+        return this._weakViewRef.get();
     }
 
     set view(view: Evergrid) {
         if (!view || !(view instanceof Evergrid)) {
             throw new Error('Invalid Evergrid view');
         }
-        this._weakViewRef.set(kWeakViewKey, view);
+        this._weakViewRef.set(view);
     }
 
     get layoutSources(): LayoutSource[] {
