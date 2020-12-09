@@ -181,6 +181,14 @@ export interface LayoutSourceProps<T> {
     /**
      * Overrides item view layout. Does not scale.
      * Can override offset, size or both.
+     * 
+     * Specifying a percentage as a string uses
+     * the chart view size as the base.
+     * 
+     * Note that this is called on item creation
+     * and is not called on subsequent renders.
+     * Any update logic must be encoded using
+     * animated values.
      */
     getItemViewLayout?: (
         index: T,
