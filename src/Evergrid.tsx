@@ -10,8 +10,16 @@ import {
 } from "./types";
 import ScrollLock from "./ScrollLock";
 
+export type ItemRenderCallback<T = any, C = any> = (item: IItem<T>, layoutSource: LayoutSource<T>, context: C) => React.ReactNode;
+export interface ItemRenderInfo<T = any, C = any> {
+    renderItem: ItemRenderCallback<T, C>;
+    context: C;
+};
+export type ItemRenderMapInput = { [layoutSourceID: string]: ItemRenderCallback | ItemRenderInfo };
+export type ItemRenderMap = { [layoutSourceID: string]: ItemRenderInfo };
+
 export interface EvergridProps extends ViewProps {
-    renderItem: (item: IItem<any>, layoutSource: LayoutSource<any>) => React.ReactNode;
+    renderItem: ItemRenderMap;
     layout: EvergridLayout;
     scrollLock?: boolean;
 }
@@ -28,6 +36,8 @@ export default class Evergrid extends React.PureComponent<
     EvergridProps,
     EvergridState
 > {
+    itemRenderMap: ItemRenderMap;
+
     private _needsRender = true;
     private _needsFirstRender = true;
     private _renderTimer: any;
@@ -41,14 +51,13 @@ export default class Evergrid extends React.PureComponent<
         };
         
         if (!this.props.layout || !(this.props.layout instanceof EvergridLayout)) {
-            throw new Error('Must layout property');
+            throw new Error('Must specify valid layout');
         }
 
         this.props.layout.view = this;
 
-        if (typeof this.props.renderItem !== 'function') {
-            throw new Error('Must renderItem property');
-        }
+        this.itemRenderMap = {};
+        this.updateItemRenderMap();
     }
 
     componentDidMount() {
@@ -58,6 +67,26 @@ export default class Evergrid extends React.PureComponent<
     componentWillUnmount() {
         this.cancelScheduledRender();
         this.props.layout.componentWillUnmount();
+    }
+
+    updateItemRenderMap() {
+        let itemRenderMap: ItemRenderMap = {};
+        for (let layoutSource of this.props.layout.layoutSources) {
+            let funcOrObject = this.props.renderItem[layoutSource.id];
+            let renderItem: ItemRenderCallback | undefined;
+            let context: any;
+            if (typeof funcOrObject === 'object') {
+                renderItem = funcOrObject.renderItem;
+                context = funcOrObject.context;
+            } else {
+                renderItem = funcOrObject;
+            }
+            if (typeof renderItem !== 'function') {
+                throw new Error(`Must specify a valid render method for layout source "${layoutSource.id}"`);
+            }
+            itemRenderMap[layoutSource.id] = { renderItem, context };
+        }
+        this.itemRenderMap = itemRenderMap;
     }
 
     lockScroll() {
@@ -214,6 +243,7 @@ export default class Evergrid extends React.PureComponent<
     }
 
     private _renderItem<T>(item: IItem<T>, layoutSource: LayoutSource<T>): React.ReactNode {
+        let renderer = this.itemRenderMap[layoutSource.id];
         // let viewKey = item.viewKey;
         // if (!viewKey) {
         //     viewKey = String(++this._itemViewCounter);
@@ -226,7 +256,7 @@ export default class Evergrid extends React.PureComponent<
                 key={item.viewKey}
                 item={item}
                 layoutSource={layoutSource}
-                renderItem={() => this.props.renderItem(item, layoutSource)}
+                renderItem={() => renderer.renderItem(item, layoutSource, renderer.context)}
                 useNativeDriver={this.props.layout.useNativeDriver}
             />
         );

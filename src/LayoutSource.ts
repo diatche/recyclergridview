@@ -40,6 +40,7 @@ const kDefaultProps: Partial<LayoutSourceProps<any>> = {
 const kWeakRootKey = {};
 
 let _layoutSourceCounter = 0;
+let _layoutSourceIDs = new Set<string>();
 
 export interface ILayoutUpdateInfo {
     needsRender?: boolean;
@@ -84,6 +85,8 @@ export interface IItemRenderOptions {
 }
 
 export interface LayoutSourceProps<T> {
+    id?: string;
+
     /**
      * The default item size in content coordinates.
      * The resulting view size is affected by scale.
@@ -267,9 +270,7 @@ export default abstract class LayoutSource<
             ...kDefaultProps,
             ...props,
         };
-        this.id = [String(++_layoutSourceCounter), this.props.reuseID]
-            .filter(x => !!x)
-            .join('_');
+        this.id = createLayoutSourceID(props.id, this.props.reuseID);
         this._itemQueues = {};
 
         this.itemSize$ = new Animated.ValueXY();
@@ -1395,4 +1396,19 @@ export default abstract class LayoutSource<
             itemNode.setNeedsRender();
         }
     }
+}
+
+const createLayoutSourceID = (id: string | undefined, suffix?: string) => {
+    if (id) {
+        if (_layoutSourceIDs.has(id)) {
+            throw new Error('Duplicate layout source ID');
+        }
+    } else {
+        do {
+            id = [String(++_layoutSourceCounter), suffix]
+                .filter(x => !!x)
+                .join('_');
+        } while (_layoutSourceIDs.has(id));
+    }
+    return id;
 }
