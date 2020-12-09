@@ -196,6 +196,16 @@ export interface LayoutSourceProps<T> {
     ) => IPartialLayout<IAnimatedPointInput> | undefined;
 
     /**
+     * Allows to modifying an item's view layout before
+     * the it is commited to the item.
+     */
+    willUseItemViewLayout?: (
+        index: T,
+        layout: ILayout<IAnimatedPoint>,
+        layoutSource: LayoutSource,
+    ) => void;
+
+    /**
      * Called after an item is created.
      */
     didCreateItem?: (item: IItem<T>) => void;
@@ -899,6 +909,10 @@ export default abstract class LayoutSource<
         return this.props.getItemViewLayout?.(index, this);
     }
 
+    willUseItemViewLayout(index: T, layout: ILayout<IAnimatedPoint>) {
+        return this.props.willUseItemViewLayout?.(index, layout, this);
+    }
+
     createItemContentLayout$(): ILayout<MutableAnimatedPoint> {
         return {
             offset: new Animated.ValueXY(),
@@ -1045,6 +1059,7 @@ export default abstract class LayoutSource<
             contentLayout,
             overrides
         );
+        this.willUseItemViewLayout(index, viewLayout);
         
         let root = this.root;
         let item: IItem<T> = {
