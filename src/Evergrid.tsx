@@ -15,11 +15,11 @@ export interface ItemRenderInfo<T = any, C = any> {
     renderItem: ItemRenderCallback<T, C>;
     context: C;
 };
-export type ItemRenderMapInput = { [layoutSourceID: string]: ItemRenderCallback | ItemRenderInfo };
+export type ItemRenderMapInput = { [layoutSourceID: string]: ItemRenderInfo | ItemRenderCallback } | ItemRenderCallback;
 export type ItemRenderMap = { [layoutSourceID: string]: ItemRenderInfo };
 
 export interface EvergridProps extends ViewProps {
-    renderItem: ItemRenderMap;
+    renderItem: ItemRenderMapInput;
     layout: EvergridLayout;
     scrollLock?: boolean;
 }
@@ -75,16 +75,26 @@ export default class Evergrid extends React.PureComponent<
     updateItemRenderMap() {
         this._needsItemRenderMapUpdate = false;
 
+        if (!this.props.renderItem) {
+            throw new Error(`Missing required property: renderItem`);
+        }
+
         let itemRenderMap: ItemRenderMap = {};
         for (let layoutSource of this.props.layout.layoutSources) {
-            let funcOrObject = this.props.renderItem[layoutSource.id];
             let renderItem: ItemRenderCallback | undefined;
-            let context: any;
-            if (typeof funcOrObject === 'object') {
-                renderItem = funcOrObject.renderItem;
-                context = funcOrObject.context;
+            let context: any = undefined;
+            if (typeof this.props.renderItem === 'function') {
+                // Shared render method
+                renderItem = this.props.renderItem;
             } else {
-                renderItem = funcOrObject;
+                // Render method for each layout source
+                let funcOrObject = this.props.renderItem[layoutSource.id];
+                if (typeof funcOrObject === 'object') {
+                    renderItem = funcOrObject.renderItem;
+                    context = funcOrObject.context;
+                } else {
+                    renderItem = funcOrObject;
+                }
             }
             if (typeof renderItem !== 'function') {
                 throw new Error(`Must specify a valid render method for layout source "${layoutSource.id}"`);
