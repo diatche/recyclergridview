@@ -35,6 +35,7 @@ import {
 } from './rnUtil';
 
 const kDefaultProps: Partial<LayoutSourceProps<any>> = {
+    clipToBounds: true,
     showDuration: 150,
 };
 
@@ -97,6 +98,14 @@ export interface LayoutSourceProps<T> {
      * Defaults to the root viewport size.
      */
     viewportSize?: AnimatedValueXYDerivedInput<LayoutSource>;
+
+    /**
+     * If `true`, items are clipped to the viewport.
+     * If `false`, items which are partially visible
+     * will be displayed up to the root view.
+     * Defaults to `true`.
+     */
+    clipToBounds?: boolean;
 
     /**
      * The default item size in content coordinates.
@@ -351,6 +360,13 @@ export default abstract class LayoutSource<
      */
     get showDuration(): number {
         return this.props.showDuration || 0;
+    }
+
+    /**
+     * @see LayoutSourceProps.clipToBounds
+     */
+    get clipToBounds(): boolean {
+        return !!this.props.clipToBounds;
     }
 
     configure(options: {

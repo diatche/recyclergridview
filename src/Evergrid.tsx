@@ -161,10 +161,10 @@ export default class Evergrid extends React.PureComponent<
             this.updateItemRenderMap();
         }
 
-        let itemViews: React.ReactNode[] = [];
+        let subviews: React.ReactNode[] = [];
         if (!this._needsFirstRender) {
             for (let layoutSource of this.props.layout.layoutSources) {
-                itemViews = itemViews.concat(this._renderLayoutSource(layoutSource));
+                subviews.push(this._renderLayoutSource(layoutSource));
             }
         } // Else: wait for first empty render to get layout.
         
@@ -220,7 +220,7 @@ export default class Evergrid extends React.PureComponent<
                 }}
             >
                 <ScrollLock locked={this._scrollLocked$} />
-                {itemViews}
+                {subviews}
             </Animated.View>
         );
     }
@@ -229,7 +229,7 @@ export default class Evergrid extends React.PureComponent<
         return React.createRef<ItemView>();
     }
 
-    private _renderLayoutSource<T>(layoutSource: LayoutSource<T>): React.ReactNode[] {
+    private _renderLayoutSource<T>(layoutSource: LayoutSource<T>): React.ReactNode {
         // console.debug(`[${layoutSource.id}] begin render`);
         let items: React.ReactNode[] = [];
 
@@ -257,7 +257,29 @@ export default class Evergrid extends React.PureComponent<
         }
 
         // console.debug(`[${layoutSource.id}] end render`);
-        return items;
+        let offset = layoutSource.getViewportOffset();
+        let size = layoutSource.getViewportSize();
+        return (
+            <Animated.View
+                key={layoutSource.id}
+                style={{
+                    transform: [
+                        { translateX: offset.x },
+                        { translateY: offset.y },
+                    ],
+                    position: 'absolute',
+                    width: size.x,
+                    height: size.y,
+                    zIndex: layoutSource.zIndex || 0,
+                    overflow: layoutSource.clipToBounds ? 'hidden' : 'visible',
+                    margin: -2,
+                    borderWidth: 2,
+                    borderColor: 'rgba(100, 210, 130, 0.5)',
+                }}
+            >
+                {items}
+            </Animated.View>
+        );
     }
 
     private _renderItem<T>(item: IItem<T>, layoutSource: LayoutSource<T>): React.ReactNode {
