@@ -490,8 +490,15 @@ export default class EvergridLayout {
 
         let previousLayoutSources = this._layoutSources;
         this._layoutSources = [...layoutSources];
+        // console.debug('layoutSources: ' + layoutSources.map(s => s.id));
 
-        for (let layoutSource of layoutSources) {
+        for (let i = 0; i < layoutSources.length; i++) {
+            let layoutSource = layoutSources[i];
+            // Check duplicates
+            if (layoutSources.indexOf(layoutSource, i) > i) {
+                throw new Error(`Cannot add duplicate layout source "${layoutSource.id}"`);
+            }
+
             if (previousLayoutSources.indexOf(layoutSource) < 0) {
                 // Added layout source
                 let i = this._layoutSources.indexOf(layoutSource);
