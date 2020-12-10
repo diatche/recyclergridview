@@ -87,6 +87,18 @@ export interface LayoutSourceProps<T> {
     id?: string;
 
     /**
+     * The location in (view coordinates) of the viewport.
+     * Defaults to a zero vector.
+     */
+    viewportOffset?: AnimatedValueXYDerivedInput<LayoutSource>;
+
+    /**
+     * The size in (view coordinates) of the viewport.
+     * Defaults to the root viewport size.
+     */
+    viewportSize?: AnimatedValueXYDerivedInput<LayoutSource>;
+
+    /**
      * The default item size in content coordinates.
      * The resulting view size is affected by scale.
      */
@@ -242,12 +254,16 @@ export default abstract class LayoutSource<
 > {
     props: Props;
     readonly id: string;
+    viewportOffset$: Animated.ValueXY;
+    viewportSize$: Animated.ValueXY;
     itemSize$: Animated.ValueXY;
     origin$: Animated.ValueXY;
     itemOrigin$: Animated.ValueXY;
     scale$: Animated.ValueXY;
     insets$: IInsets<Animated.Value>;
 
+    private _viewportOffset: IPoint;
+    private _viewportSize: IPoint;
     private _itemSize: IPoint;
     private _origin: IPoint;
     private _itemOrigin: IPoint;
@@ -271,6 +287,12 @@ export default abstract class LayoutSource<
         };
         this.id = createLayoutSourceID(props.id, this.props.reuseID);
         this._itemQueues = {};
+
+        this.viewportOffset$ = new Animated.ValueXY();
+        this._viewportOffset = zeroPoint();
+
+        this.viewportSize$ = new Animated.ValueXY();
+        this._viewportSize = { x: 1, y: 1 };
 
         this.itemSize$ = new Animated.ValueXY();
         this._itemSize = { x: 1, y: 1 };
@@ -341,6 +363,38 @@ export default abstract class LayoutSource<
         let sub = '';
 
         this._setRoot(options.root);
+
+        this.viewportOffset$ = normalizeAnimatedDerivedValueXY(this.props.viewportOffset, {
+            info: this,
+        });
+        this._viewportOffset = {
+            // @ts-ignore: _value is private
+            x: this.viewportOffset$.x._value || 0,
+            // @ts-ignore: _value is private
+            y: this.viewportOffset$.y._value || 0,
+        };
+        sub = this.viewportOffset$.addListener(p => {
+            this._viewportOffset = p;
+            this.setNeedsUpdate();
+        });
+        this._animatedSubscriptions[sub] = this.viewportOffset$;
+
+        this.viewportSize$ = normalizeAnimatedDerivedValueXY(this.props.viewportSize, {
+            info: this,
+            defaults: options.root.containerSize$,
+        });
+        this._viewportSize = {
+            // @ts-ignore: _value is private
+            x: this.viewportSize$.x._value || 0,
+            // @ts-ignore: _value is private
+            y: this.viewportSize$.y._value || 0,
+        };
+        sub = this.viewportSize$.addListener(p => {
+            this._viewportSize = p;
+            this.setNeedsUpdate();
+        });
+        this._animatedSubscriptions[sub] = this.viewportSize$;
+
         this.itemSize$ = normalizeAnimatedDerivedValueXY(this.props.itemSize, {
             info: this,
         });
@@ -659,6 +713,10 @@ export default abstract class LayoutSource<
         return range;
     }
 
+    /**
+     * Returns the origin of the layout in view coordinates
+     * based on the sticky edge, if any, otherwise empty.
+     */
     getStickyContainerLocation(): Partial<IPoint> {
         if (!this.props.stickyEdge) {
             return {};
@@ -686,6 +744,11 @@ export default abstract class LayoutSource<
         }
     }
 
+    /**
+     * Returns the animated origin of the layout in view
+     * coordinates based on the sticky edge, if any,
+     * otherwise empty.
+     */
     getStickyContainerLocation$(): Partial<IAnimatedPoint> {
         if (!this.props.stickyEdge) {
             return {};
@@ -719,6 +782,10 @@ export default abstract class LayoutSource<
         }
     }
 
+    /**
+     * Converts a point in content coordinates to view coordinates.
+     * @param point 
+     */
     getContainerLocation(point: IPoint): IPoint {
         let { x, y } = this.root.getContainerLocation(point, {
             scale: this.scale
@@ -733,7 +800,7 @@ export default abstract class LayoutSource<
                 p.x = x - this._insets.right;
             }
         }
-        p.x = p.x || 0 + this._origin.x * scale.x;
+        p.x = p.x || 0 + this._origin.x * scale.x + this._viewportOffset.x;
 
         if (typeof p.y === 'undefined') {
             if (scale.y > 0) {
@@ -742,10 +809,15 @@ export default abstract class LayoutSource<
                 p.y = y - this._insets.bottom;
             }
         }
-        p.y = p.y || 0 + this._origin.y * scale.y;
+        p.y = p.y || 0 + this._origin.y * scale.y + this._viewportOffset.y;
         return p as IPoint;
     }
 
+    /**
+     * Converts a animated point in content coordinates to
+     * view coordinates.
+     * @param point 
+     */
     getContainerLocation$(point: IAnimatedPoint | Animated.ValueXY): IAnimatedPoint {
         let { x, y } = this.root.getContainerLocation$(point, {
             scale: this.scale$
@@ -774,6 +846,10 @@ export default abstract class LayoutSource<
                 scale$.x,
             ),
         );
+        p.x = Animated.add(
+            p.x,
+            this.viewportOffset$.x,
+        );
 
         if (typeof p.y === 'undefined') {
             if (scale.y > 0) {
@@ -794,6 +870,10 @@ export default abstract class LayoutSource<
                 this.origin$.y,
                 scale$.y,
             ),
+        );
+        p.y = Animated.add(
+            p.y,
+            this.viewportOffset$.y,
         );
         return p as IAnimatedPoint;
     }
@@ -821,7 +901,7 @@ export default abstract class LayoutSource<
      */
     getLocation(point: IPoint): IPoint {
         let { x, y } = this.root.getLocation(point);
-        let offset = this.getLocationInsetOffset();
+        let offset = this.getLocationOffset();
         return {
             x: x - this._origin.x + offset.x,
             y: y - this._origin.y + offset.y,
@@ -833,11 +913,11 @@ export default abstract class LayoutSource<
      * when converting from view to content
      * coordinates.
      */
-    getLocationInsetOffset(): IPoint {
+    getLocationOffset(): IPoint {
         let scale = this.getScale();
         return {
-            x: Math.min(-this._insets.left / scale.x, this._insets.right / scale.x),
-            y: Math.min(-this._insets.top / scale.y, this._insets.bottom / scale.y),
+            x: Math.min(-this._insets.left / scale.x, this._insets.right / scale.x) - this._viewportOffset.x,
+            y: Math.min(-this._insets.top / scale.y, this._insets.bottom / scale.y) - this._viewportOffset.y,
         };
     }
 
@@ -876,8 +956,16 @@ export default abstract class LayoutSource<
         return i;
     }
 
+    get viewportOffset(): IPoint {
+        return { ...this._viewportOffset };
+    }
+
+    get viewportSize(): IPoint {
+        return { ...this._viewportSize };
+    }
+
     getViewportOffset(): IPoint {
-        let { x, y } = this._maybeRoot?.viewOffset || zeroPoint();
+        let { x, y } = this._viewportOffset;
         let scale = this.getScale();
         return {
             x: x + (scale.x > 0 ? -this._insets.left : this._insets.right),
@@ -886,7 +974,7 @@ export default abstract class LayoutSource<
     }
     
     getViewportSize(): IPoint {
-        let { x, y } = this._maybeRoot?.containerSize || zeroPoint();
+        let { x, y } = this._viewportSize;
         return {
             x: x - this._insets.left - this._insets.right,
             y: y - this._insets.top - this._insets.bottom,
