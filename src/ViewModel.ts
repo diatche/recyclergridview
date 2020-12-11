@@ -13,22 +13,22 @@ import {
 import {
     normalizeAnimatedDerivedValueXY,
 } from './rnUtil';
+    
+const kDefaultProps: Partial<ViewModelProps> = {};
 
-const kDefaultProps: Partial<LayoutSpaceProps> = {};
-
-export interface LayoutSpaceProps {
+export interface ViewModelProps {
     
     /**
      * The location in (parent coordinates) of the viewport.
      * Defaults to a zero vector.
      */
-    offset?: AnimatedValueXYDerivedInput<LayoutSpace>;
+    offset?: AnimatedValueXYDerivedInput<ViewModel>;
 
     /**
      * The size in (parent coordinates) of the viewport.
      * Defaults to a zero vector.
      */
-    size?: AnimatedValueXYDerivedInput<LayoutSpace>;
+    size?: AnimatedValueXYDerivedInput<ViewModel>;
 
     /**
      * Set to `{ x: 1, y: 1 }` by default.
@@ -38,11 +38,11 @@ export interface LayoutSpaceProps {
      * the items appear closer and further away
      * respectively.
      */
-    scale?: AnimatedValueXYDerivedInput<LayoutSpace>;
+    scale?: AnimatedValueXYDerivedInput<ViewModel>;
 }
 
-export default abstract class LayoutSpace<
-    Props extends LayoutSpaceProps = LayoutSpaceProps
+export class ViewModel<
+    Props extends ViewModelProps = ViewModelProps
 > {
     props: Props;
     scale$: Animated.ValueXY;
@@ -56,7 +56,7 @@ export default abstract class LayoutSpace<
 
     private _animatedSubscriptions: { [id: string]: Animated.Value | Animated.ValueXY } = {};
 
-    private _parentWeakRef = weakref<LayoutSpace>();
+    private _parentWeakRef = weakref<ViewModel>();
 
     constructor(props: Props) {
         this.props = {
@@ -75,11 +75,11 @@ export default abstract class LayoutSpace<
         this.scale$ = new Animated.ValueXY({ ...this._scale });
     }
 
-    get parent(): LayoutSpace | undefined {
+    get parent(): ViewModel | undefined {
         return this._parentWeakRef.get();
     }
 
-    setParent(parent: LayoutSpace) {
+    setParent(parent: ViewModel) {
         this.resetObservables();
 
         this.willChangeParent();
@@ -148,8 +148,8 @@ export default abstract class LayoutSpace<
         return { ...this._size };
     }
 
-    private _setParent(parent: LayoutSpace | undefined) {
-        if (!parent || !(parent instanceof LayoutSpace)) {
+    private _setParent(parent: ViewModel | undefined) {
+        if (!parent || !(parent instanceof ViewModel)) {
             throw new Error('Invalid root layout');
         }
         this._parentWeakRef.set(parent);
