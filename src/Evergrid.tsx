@@ -189,8 +189,8 @@ export default class Evergrid extends React.PureComponent<
                 //     [{
                 //         nativeEvent: {
                 //             layout: {
-                //                 width: this.containerSize$.x,
-                //                 height: this.containerSize$.y,
+                //                 width: this.size$.x,
+                //                 height: this.size$.y,
                 //             }
                 //         }
                 //     }],
@@ -206,8 +206,8 @@ export default class Evergrid extends React.PureComponent<
                                 layout: {
                                     x: this.props.layout.containerOffset$.x,
                                     y: this.props.layout.containerOffset$.y,
-                                    width: this.props.layout.containerSize$.x,
-                                    height: this.props.layout.containerSize$.y,
+                                    width: this.props.layout.size$.x,
+                                    height: this.props.layout.size$.y,
                                 }
                             }
                         }],
@@ -257,8 +257,8 @@ export default class Evergrid extends React.PureComponent<
         }
 
         // console.debug(`[${layoutSource.id}] end render`);
-        let offset = layoutSource.getViewportOffset();
-        let size = layoutSource.getViewportSize();
+        let offset = layoutSource.get offset$();
+        let size = layoutSource.get size$();
         return (
             <Animated.View
                 key={layoutSource.id}

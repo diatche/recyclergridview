@@ -53,9 +53,9 @@ export interface IScrollInfo {
     location: IPoint,
     /** Content velocity in content coordinates. */
     velocity: IPoint,
-    /** Viewport location in view coordinates (pixels). */
+    /** Viewport location in parent coordinates (pixels). */
     offset: IPoint,
-    /** Viewport velocity in view coordinates (pixels). */
+    /** Viewport velocity in parent coordinates (pixels). */
     scaledVelocity: IPoint,
 }
 
@@ -116,7 +116,7 @@ export interface EvergridLayoutProps extends EvergridLayoutPrimitiveProps {
     scale?: AnimatedValueXYDerivedInput<EvergridLayout>;
     /**
      * The point with values in the range 0-1.
-     * The point represents the origin in the viewport.
+     * The point represents the contentOffset in the viewport.
      * Scaling also happens about this point.
      * 
      * Defaults to `{ x: 0.5, y: 0.5 }`, i.e. the
@@ -125,7 +125,7 @@ export interface EvergridLayoutProps extends EvergridLayoutPrimitiveProps {
     anchor?: AnimatedValueXYDerivedInput<EvergridLayout>;
     /**
      * Modify the pan target.
-     * Defaults to [viewOffset]{@link EvergridLayout#viewOffset}
+     * Defaults to [offset]{@link EvergridLayout#offset}
      */
     panTarget?: Animated.ValueXY;
     /** Enabled by default. */
@@ -177,15 +177,15 @@ export default class EvergridLayout {
     readonly callbacks: EvergridLayoutCallbacks;
 
     private _layoutSources: LayoutSource<any>[];
-    readonly viewOffset$: Animated.ValueXY;
-    /** Animated container size in view coordinates. */
-    readonly containerSize$: Animated.ValueXY;
-    /** Animated container offset in parent view coordinates. */
+    readonly offset$: Animated.ValueXY;
+    /** Animated container size in parent coordinates. */
+    readonly size$: Animated.ValueXY;
+    /** Animated container offset in parent parent coordinates. */
     readonly containerOffset$: Animated.ValueXY;
     readonly scale$: Animated.ValueXY;
     /**
      * The point with values in the range 0-1.
-     * The point represents the origin in the viewport.
+     * The point represents the contentOffset in the viewport.
      * Scaling also happens about this point.
      * 
      * Defaults to `{ x: 0.5, y: 0.5 }`, i.e. the
@@ -196,8 +196,8 @@ export default class EvergridLayout {
     
     private _weakViewRef = weakref<Evergrid>();
 
-    private _locationOffsetBase$: Animated.ValueXY;
-    private _locationOffsetBase: IPoint;
+    private _contentOffset$: Animated.ValueXY;
+    private _contentOffset: IPoint;
     private _scale: IPoint;
     private _hasScale = false;
     private _anchor: IPoint;
@@ -211,8 +211,8 @@ export default class EvergridLayout {
     private _pressInEvent?: GestureResponderEvent;
     private _pressInGestureState?: PanResponderGestureState;
     private _descelerationAnimation?: Animated.CompositeAnimation;
-    private _viewOffset: IPoint;
-    private _containerSize: IPoint;
+    private _offset: IPoint;
+    private _size: IPoint;
     private _hasContainerSize = false;
     private _containerOffset: IPoint;
     private _itemViewCounter = 0;
@@ -264,20 +264,20 @@ export default class EvergridLayout {
 
         let sub = '';
 
-        this._containerSize = zeroPoint();
-        this.containerSize$ = new Animated.ValueXY();
-        sub = this.containerSize$.addListener(p => {
+        this._size = zeroPoint();
+        this.size$ = new Animated.ValueXY();
+        sub = this.size$.addListener(p => {
             if (p.x <= 0 || p.y <= 0) {
-                // console.debug('Ignoring invalid containerSize value: ' + JSON.stringify(p));
+                // console.debug('Ignoring invalid size value: ' + JSON.stringify(p));
                 return;
             }
-            if (Math.abs(p.x - this._containerSize.x) < 1 && Math.abs(p.y - this._containerSize.y) < 1) {
+            if (Math.abs(p.x - this._size.x) < 1 && Math.abs(p.y - this._size.y) < 1) {
                 return;
             }
-            this._containerSize = p;
+            this._size = p;
             this.didChangeContainerSize();
         });
-        this._animatedSubscriptions[sub] = this.containerSize$;
+        this._animatedSubscriptions[sub] = this.size$;
 
         this._containerOffset = zeroPoint();
         this.containerOffset$ = new Animated.ValueXY();
@@ -332,27 +332,27 @@ export default class EvergridLayout {
         });
         this._animatedSubscriptions[sub] = this.anchor$;
 
-        this._locationOffsetBase$ = normalizeAnimatedDerivedValueXY(offset, {
+        this._contentOffset$ = normalizeAnimatedDerivedValueXY(offset, {
             info: this,
         });
-        this._locationOffsetBase = {
+        this._contentOffset = {
             // @ts-ignore: _value is private
-            x: this._locationOffsetBase$.x._value || 0,
+            x: this._contentOffset$.x._value || 0,
             // @ts-ignore: _value is private
-            y: this._locationOffsetBase$.y._value || 0,
+            y: this._contentOffset$.y._value || 0,
         };
-        sub = this._locationOffsetBase$.addListener(p => {
-            this._locationOffsetBase = p;
+        sub = this._contentOffset$.addListener(p => {
+            this._contentOffset = p;
             this.didChangeLocation();
         });
-        this._animatedSubscriptions[sub] = this._locationOffsetBase$;
+        this._animatedSubscriptions[sub] = this._contentOffset$;
 
-        this._viewOffset = zeroPoint();
-        this.viewOffset$ = new Animated.ValueXY();
-        sub = this.viewOffset$.addListener(p => this._onViewOffsetChange(p));
-        this._animatedSubscriptions[sub] = this.viewOffset$;
+        this._offset = zeroPoint();
+        this.offset$ = new Animated.ValueXY();
+        sub = this.offset$.addListener(p => this._onViewOffsetChange(p));
+        this._animatedSubscriptions[sub] = this.offset$;
 
-        this._panTarget$ = panTarget || this.viewOffset$;
+        this._panTarget$ = panTarget || this.offset$;
 
         this._panVelocty = zeroPoint();
         this._panVelocty$ = new Animated.ValueXY();
@@ -612,7 +612,7 @@ export default class EvergridLayout {
     }
 
     private _onViewOffsetChange(p: IPoint) {
-        this._viewOffset = p;
+        this._offset = p;
         this.setNeedsUpdate();
     }
 
@@ -670,13 +670,13 @@ export default class EvergridLayout {
             contentVelocity: velocity,
         } = this;
 
-        let isDefaultPan = this._panTarget$ === this.viewOffset$;
+        let isDefaultPan = this._panTarget$ === this.offset$;
         if (isDefaultPan) {
             if (!handled && this.callbacks.snapToLocation) {
                 let scrollInfo: IScrollInfo = {
                     location: { ...offset },
                     velocity,
-                    offset: this.viewOffset,
+                    offset: this.offset,
                     scaledVelocity: { ...panVelocity },
                 };
                 let maybeScrollLocation = this.callbacks.snapToLocation(scrollInfo);
@@ -745,18 +745,18 @@ export default class EvergridLayout {
     private _transferViewOffsetToLocation() {
         this.beginUpdate();
         let location = {
-            x: this._locationOffsetBase.x + this._viewOffset.x / this._scale.x,
-            y: this._locationOffsetBase.y + this._viewOffset.y / this._scale.y,
+            x: this._contentOffset.x + this._offset.x / this._scale.x,
+            y: this._contentOffset.y + this._offset.y / this._scale.y,
         };
-        this._viewOffset = zeroPoint();
-        this._locationOffsetBase = location;
-        this._locationOffsetBase$.setValue(location);
+        this._offset = zeroPoint();
+        this._contentOffset = location;
+        this._contentOffset$.setValue(location);
         this.endUpdate();
     }
 
     get containerOriginOffset(): IPoint {
         let { x: x0, y: y0 } = this._anchor;
-        let { x: width, y: height } = this.containerSize;
+        let { x: width, y: height } = this.size;
         return {
             // x: -this._viewportInsets.left - width * x0,
             // y: -this._viewportInsets.top - height * y0,
@@ -767,7 +767,7 @@ export default class EvergridLayout {
 
     get containerOriginOffset$(): IAnimatedPoint {
         let { x: x0, y: y0 } = this.anchor$;
-        let { x: width, y: height } = this.containerSize$;
+        let { x: width, y: height } = this.size$;
         return {
             x: negate$(Animated.multiply(
                 width,
@@ -782,36 +782,36 @@ export default class EvergridLayout {
 
     get locationOffset(): IPoint {
         return {
-            x: this._locationOffsetBase.x + this._viewOffset.x / this._scale.x,
-            y: this._locationOffsetBase.y + this._viewOffset.y / this._scale.y,
+            x: this._contentOffset.x + this._offset.x / this._scale.x,
+            y: this._contentOffset.y + this._offset.y / this._scale.y,
         };
     }
 
     get locationOffset$(): IAnimatedPoint {
         return {
             x: Animated.add(
-                this._locationOffsetBase$.x,
+                this._contentOffset$.x,
                 Animated.divide(
-                    this.viewOffset$.x,
+                    this.offset$.x,
                     this.scale$.x,
                 ),
             ),
             y: Animated.add(
-                this._locationOffsetBase$.y,
+                this._contentOffset$.y,
                 Animated.divide(
-                    this.viewOffset$.y,
+                    this.offset$.y,
                     this.scale$.y,
                 ),
             ),
         };
     }
 
-    get containerSize(): IPoint {
-        return { ...this._containerSize };
+    get size(): IPoint {
+        return { ...this._size };
     }
 
-    get viewOffset(): IPoint {
-        return { ...this._viewOffset };
+    get offset(): IPoint {
+        return { ...this._offset };
     }
 
     get panVelocity(): IPoint {
@@ -916,7 +916,7 @@ export default class EvergridLayout {
         this.cancelScheduledUpdate();
 
         if (!this._hasContainerSize) {
-            if (this._containerSize.x >= 1 && this._containerSize.y >= 1) {
+            if (this._size.x >= 1 && this._size.y >= 1) {
                 this._hasContainerSize = true;
             } else {
                 // Wait for a valid container size before updating
@@ -954,11 +954,11 @@ export default class EvergridLayout {
     }
 
     getVisibleLocationRange(): [IPoint, IPoint] {
-        let { x: width, y: height } = this.containerSize;
+        let { x: width, y: height } = this.size;
         if (width < 1 || height < 1) {
             return [zeroPoint(), zeroPoint()];
         }
-        let { x, y } = this.viewOffset;
+        let { x, y } = this.offset;
         let scale = this.scale;
         let startOffset = {
             x: Math.ceil(x),
@@ -978,8 +978,8 @@ export default class EvergridLayout {
             startOffset.y = endOffset.y
             endOffset.y = ySave;
         }
-        let start = this.getLocation(startOffset);
-        let end = this.getLocation(endOffset);
+        let start = this.reverseTransformPoint(startOffset);
+        let end = this.reverseTransformPoint(endOffset);
         if (start.x >= end.x || start.y >= end.y) {
             return [zeroPoint(), zeroPoint()];
         }
@@ -988,7 +988,7 @@ export default class EvergridLayout {
 
     /**
      * Transforms a vector in content coordinates
-     * to a vector in view coordinates (pixels).
+     * to a vector in parent coordinates (pixels).
      * @param point 
      */
     scaleVector(point: IPoint): IPoint {
@@ -1000,7 +1000,7 @@ export default class EvergridLayout {
 
     /**
      * Transforms an animated vector in content coordinates
-     * to an animated vector in view coordinates (pixels).
+     * to an animated vector in parent coordinates (pixels).
      * @param point 
      */
     scaleVector$(point: IAnimatedPoint): IAnimatedPoint {
@@ -1012,7 +1012,7 @@ export default class EvergridLayout {
 
     /**
      * Transforms an animated size in content coordinates
-     * to an animated size in view coordinates (pixels).
+     * to an animated size in parent coordinates (pixels).
      * 
      * Accounts for negative scale.
      * 
@@ -1034,7 +1034,7 @@ export default class EvergridLayout {
     }
 
     /**
-     * Transforms a vector in view coordinates (pixels)
+     * Transforms a vector in parent coordinates (pixels)
      * to a vector in content coordinates.
      * @param point 
      */
@@ -1048,7 +1048,7 @@ export default class EvergridLayout {
         };
     }
 
-    getContainerLocationWithEvent(event: GestureResponderEvent): IPoint {
+    convertPointFromContentToParentWithEvent(event: GestureResponderEvent): IPoint {
         return {
             x: -event.nativeEvent.locationX,
             y: -event.nativeEvent.locationY,
@@ -1060,17 +1060,17 @@ export default class EvergridLayout {
      * to a point in container coordinates.
      * @param point 
      */
-    getContainerLocation(
+    transformPoint(
         point: IPoint,
         options?: {
             scale?: Partial<IPoint>;
         }
     ): IPoint {
-        let { x: xl0, y: yl0 } = this._locationOffsetBase;
+        let { x: xl0, y: yl0 } = this._contentOffset;
         let { x: x0, y: y0 } = this.containerOriginOffset;
         let cp: IPoint = {
-            x: this._viewOffset.x - x0,
-            y: this._viewOffset.y - y0,
+            x: this._offset.x - x0,
+            y: this._offset.y - y0,
         };
         let scale: IPoint = {
             x: this._scale.x,
@@ -1094,21 +1094,21 @@ export default class EvergridLayout {
      * to a point in container coordinates.
      * @param point 
      */
-    getContainerLocation$(
+    transformPoint$(
         point: IAnimatedPoint | Animated.ValueXY,
         options?: {
             scale?: Partial<IAnimatedPoint> | Partial<Animated.ValueXY>;
         }
     ): IAnimatedPoint {
-        let { x: xl0, y: yl0 } = this._locationOffsetBase$;
+        let { x: xl0, y: yl0 } = this._contentOffset$;
         let { x: x0, y: y0 } = this.containerOriginOffset$;
         let cp: IAnimatedPoint = {
             x: Animated.subtract(
-                this.viewOffset$.x,
+                this.offset$.x,
                 x0,
             ),
             y: Animated.subtract(
-                this.viewOffset$.y,
+                this.offset$.y,
                 y0,
             ),
         };
@@ -1148,15 +1148,15 @@ export default class EvergridLayout {
     }
 
     /**
-     * Transforms a point in view coordinates (pixels)
+     * Transforms a point in parent coordinates (pixels)
      * to a point in content coordinates.
      * @param point 
      */
-    getLocation(point: IPoint): IPoint {
+    reverseTransformPoint(point: IPoint): IPoint {
         if (this._scale.x === 0 || this._scale.y === 0) {
             return zeroPoint();
         }
-        let { x: xl0, y: yl0 } = this._locationOffsetBase;
+        let { x: xl0, y: yl0 } = this._contentOffset;
         let { x: x0, y: y0 } = this.containerOriginOffset;
         return {
             x: -xl0 - (point.x - x0) / this._scale.x,
@@ -1167,7 +1167,7 @@ export default class EvergridLayout {
     scrollBy(
         options: { offset: Partial<IPoint> } & IAnimationBaseOptions
     ): Animated.CompositeAnimation | undefined {
-        let offset = { ...this._locationOffsetBase };
+        let offset = { ...this._contentOffset };
         let hasOffset = false;
         if (typeof options.offset.x !== 'undefined') {
             offset.x += options.offset.x;
@@ -1192,7 +1192,7 @@ export default class EvergridLayout {
         if (this._panStarted) {
             return;
         }
-        let offset = { ...this._locationOffsetBase };
+        let offset = { ...this._contentOffset };
         let hasOffset = false;
         if (typeof options.offset.x !== 'undefined') {
             offset.x = options.offset.x;
@@ -1214,7 +1214,7 @@ export default class EvergridLayout {
         this._transferViewOffsetToLocation();
 
         if (!options.animated) {
-            this._locationOffsetBase$.setValue(offset);
+            this._contentOffset$.setValue(offset);
             let info = { finished: true };
             this._onEndDeceleration(info);
             options.onEnd?.(info);
@@ -1223,7 +1223,7 @@ export default class EvergridLayout {
 
         if (options.timing) {
             this._descelerationAnimation = Animated.timing(
-                this._locationOffsetBase$,
+                this._contentOffset$,
                 {
                     toValue: offset,
                     ...options.timing,
@@ -1232,7 +1232,7 @@ export default class EvergridLayout {
             );
         } else {
             this._descelerationAnimation = Animated.spring(
-                this._locationOffsetBase$, // Auto-multiplexed
+                this._contentOffset$, // Auto-multiplexed
                 {
                     toValue: offset,
                     velocity: options.spring?.velocity || this.contentVelocity,
