@@ -13,8 +13,6 @@ import {
 import {
     normalizeAnimatedDerivedValueXY,
 } from './rnUtil';
-    
-const kDefaultProps: Partial<ViewModelProps> = {};
 
 export interface ViewModelProps {
     
@@ -39,30 +37,69 @@ export interface ViewModelProps {
      * respectively.
      */
     scale?: AnimatedValueXYDerivedInput<ViewModel>;
+
+    /**
+     * Setting a non-zero z-index here will set the default
+     * z-index for all items.
+     * 
+     * By default, the view sets the z-index such that the
+     * visual order of items matches the order in which the
+     * layout source were added to the view. Customise this
+     * behaviour [in the view]{@link EvergridLayoutProps}.
+     * 
+     * You can also set each item's z-index individually
+     * in the item's layout callback. Refer to the subclasses
+     * item layout method for more information.
+     */
+    zIndex?: number;
+
+    /**
+     * The first z-index to use when adding children.
+     * Defaults to 10.
+     * 
+     * If a layout source [defines their own]{@link ChildProps#zIndex}
+     * non-zero z-index, this will not override it.
+     */
+    zIndexStart?: number;
+    /**
+     * The distance between z-indexes in children.
+     * Defaults to 10.
+     * 
+     * If a layout source [defines their own]{@link ChildProps#zIndex}
+     * non-zero z-index, this will not override it.
+     */
+    zIndexStride?: number;
 }
 
 export class ViewModel<
     Props extends ViewModelProps = ViewModelProps
 > {
     props: Props;
-    scale$: Animated.ValueXY;
+    zIndex?: number;
+    zIndexStart: number;
+    zIndexStride: number;
 
+    scale$: Animated.ValueXY;
     offset$: Animated.ValueXY;
     size$: Animated.ValueXY;
+
     private _offset: IPoint;
     private _size: IPoint;
     private _contentOffset: IPoint;
     private _scale: IPoint;
+
+    private _children: ViewModel[] = [];
 
     private _animatedSubscriptions: { [id: string]: Animated.Value | Animated.ValueXY } = {};
 
     private _parentWeakRef = weakref<ViewModel>();
 
     constructor(props: Props) {
-        this.props = {
-            ...kDefaultProps,
-            ...props,
-        };
+        this.props = { ...props };
+
+        this.zIndex = this.props.zIndex;
+        this.zIndexStart = this.props.zIndexStart || 0;
+        this.zIndexStride = this.props.zIndexStride || 0;
 
         this.offset$ = new Animated.ValueXY();
         this._offset = zeroPoint();
@@ -75,67 +112,148 @@ export class ViewModel<
         this.scale$ = new Animated.ValueXY({ ...this._scale });
     }
 
+    setChilds(children: ViewModel[]) {
+        for (let child of this._children) {
+            if (children.indexOf(child) < 0) {
+                // Removed layout source
+                child.setParent(undefined);
+            }
+        }
+
+        let previousChilds = this._children;
+        this._children = [...children];
+        // console.debug('children: ' + children.map(s => s.id));
+
+        for (let i = 0; i < children.length; i++) {
+            let child = children[i];
+            // Check duplicates
+            if (children.indexOf(child, i) > i) {
+                throw new Error(`Cannot add duplicate child view model`);
+            }
+
+            if (previousChilds.indexOf(child) < 0) {
+                // Added layout source
+                let i = this._children.indexOf(child);
+                child.setParent(this, {
+                    zIndex: this.zIndexStart + i * this.zIndexStride,
+                });
+            }
+        }
+    }
+
+    addChild(
+        child: ViewModel,
+        options?: {
+            zIndex?: number;
+            strict?: boolean;
+        }
+    ) {
+        let {
+            strict = false,
+            zIndex = this.zIndexStart + this._children.length * this.zIndexStride,
+        } = options || {};
+
+        let i = this._children.indexOf(child);
+        if (i >= 0) {
+            if (strict) {
+                throw new Error('Layout source is already added.');
+            }
+            return;
+        }
+
+        this._children.push(child);
+        child.setParent(this, { zIndex });
+    }
+
+    removeChild(
+        child: ViewModel,
+        options?: {
+            strict?: boolean;
+        }
+    ) {
+        let i = this._children.indexOf(child);
+        if (i < 0) {
+            if (options?.strict) {
+                throw new Error('Layout source not found');
+            }
+            return;
+        }
+        this._children.splice(i, 1);
+        child.setParent(undefined);
+    }
+
     get parent(): ViewModel | undefined {
         return this._parentWeakRef.get();
     }
 
-    setParent(parent: ViewModel) {
+    setParent(
+        parent: ViewModel | undefined,
+        configuration?: {
+            zIndex?: number;
+        },
+    ) {
         this.resetObservables();
 
         this.willChangeParent();
         this._setParent(parent);
 
-        this.offset$ = normalizeAnimatedDerivedValueXY(this.props.offset, {
-            info: this,
-        });
-        this._offset = {
-            // @ts-ignore: _value is private
-            x: this._offset$.x._value || 0,
-            // @ts-ignore: _value is private
-            y: this._offset$.y._value || 0,
-        };
-        this.observeAnimatedValue(this.offset$, p => {
-            this._offset = p;
-            this.didChangeSpace();
-        });
-
-        this.size$ = normalizeAnimatedDerivedValueXY(this.props.size, {
-            info: this,
-            defaults: parent?.size$,
-        });
-        this._size = {
-            // @ts-ignore: _value is private
-            x: this._size$.x._value || 0,
-            // @ts-ignore: _value is private
-            y: this._size$.y._value || 0,
-        };
-        this.observeAnimatedValue(this.size$, p => {
-            this._size = p;
-            this.didChangeSpace();
-        });
-
-        this.scale$ = normalizeAnimatedDerivedValueXY(this.props.scale, {
-            info: this,
-            defaults: this._scale,
-        });
-        this._scale = {
-            // @ts-ignore: _value is private
-            x: this.scale$.x._value || 0,
-            // @ts-ignore: _value is private
-            y: this.scale$.y._value || 0,
-        };
-        this.observeAnimatedValue(this.scale$, p => {
-            if (p.x === 0 || p.y === 0) {
-                // console.debug('Ignoring invalid scale value: ' + JSON.stringify(p));
-                return;
+        if (parent) {
+            if (typeof this.props.zIndex === 'undefined') {
+                this.zIndex = configuration?.zIndex || 0;
             }
-            if (p.x === this._scale.x && p.y === this._scale.y) {
-                return;
-            }
-            // TODO: Reset if scale changes sign.
-            this._scale = p;
-            this.didChangeSpace();
-        });
+
+            this.offset$ = normalizeAnimatedDerivedValueXY(this.props.offset, {
+                info: this,
+            });
+            this._offset = {
+                // @ts-ignore: _value is private
+                x: this._offset$.x._value || 0,
+                // @ts-ignore: _value is private
+                y: this._offset$.y._value || 0,
+            };
+            this.observeAnimatedValue(this.offset$, p => {
+                this._offset = p;
+                this.didChangeSpace();
+            });
+
+            this.size$ = normalizeAnimatedDerivedValueXY(this.props.size, {
+                info: this,
+                defaults: parent?.size$,
+            });
+            this._size = {
+                // @ts-ignore: _value is private
+                x: this._size$.x._value || 0,
+                // @ts-ignore: _value is private
+                y: this._size$.y._value || 0,
+            };
+            this.observeAnimatedValue(this.size$, p => {
+                this._size = p;
+                this.didChangeSpace();
+            });
+
+            this.scale$ = normalizeAnimatedDerivedValueXY(this.props.scale, {
+                info: this,
+                defaults: this._scale,
+            });
+            this._scale = {
+                // @ts-ignore: _value is private
+                x: this.scale$.x._value || 0,
+                // @ts-ignore: _value is private
+                y: this.scale$.y._value || 0,
+            };
+            this.observeAnimatedValue(this.scale$, p => {
+                if (p.x === 0 || p.y === 0) {
+                    // console.debug('Ignoring invalid scale value: ' + JSON.stringify(p));
+                    return;
+                }
+                if (p.x === this._scale.x && p.y === this._scale.y) {
+                    return;
+                }
+                // TODO: Reset if scale changes sign.
+                this._scale = p;
+                this.didChangeSpace();
+            });
+        }
 
         this.didChangeParent();
     }
