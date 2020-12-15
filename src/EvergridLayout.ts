@@ -12,6 +12,7 @@ import {
 import {
     Evergrid,
     ItemView,
+    kPanPressableCallbackKeys,
     kPanResponderCallbackKeys,
     LayoutSource,
 } from "./internal";
@@ -261,6 +262,11 @@ export default class EvergridLayout {
             onViewportSizeChanged,
             onScaleChanged,
         };
+        for (let cbKey of [...kPanResponderCallbackKeys, ...kPanPressableCallbackKeys]) {
+            if (options?.[cbKey]) {
+                this.callbacks[cbKey] = options[cbKey] as any;
+            }
+        }
 
         let sub = '';
 

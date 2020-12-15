@@ -1,5 +1,8 @@
 import { PanResponderCallbacks } from "react-native";
-import { IInsets } from "./types";
+import {
+    IInsets,
+    PanPressableCallbacks,
+} from "./types";
 
 export const kInsetKeys: (keyof IInsets)[] = ['top', 'right', 'bottom', 'left'];
 export const kZeroInsets: IInsets = {
@@ -8,6 +11,13 @@ export const kZeroInsets: IInsets = {
     bottom: 0,
     left: 0,
 }
+
+export const kPanPressableCallbackKeys: (keyof PanPressableCallbacks)[] = [
+    'onPress',
+    'onPressIn',
+    'onPressOut',
+    'onLongPress',
+];
 
 export const kPanResponderCallbackKeys: (keyof PanResponderCallbacks)[] = [
     'onMoveShouldSetPanResponder',
