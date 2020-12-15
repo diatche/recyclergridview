@@ -124,11 +124,6 @@ export interface EvergridLayoutProps extends EvergridLayoutPrimitiveProps {
      * center of the viewport.
      **/
     anchor?: AnimatedValueXYDerivedInput<EvergridLayout>;
-    /**
-     * Modify the pan target.
-     * Defaults to [viewOffset]{@link EvergridLayout#viewOffset}
-     */
-    panTarget?: Animated.ValueXY;
     /** Enabled by default. */
     panEnabled?: boolean;
     /** Enabled by default. */
@@ -207,7 +202,6 @@ export default class EvergridLayout {
     private _panStarted = false;
     private _panMapping?: Animated.Mapping;
     private _panDefaultPrevented = false;
-    private _panTarget$: Animated.ValueXY;
     private _longPressTimer?: any;
     private _isLongPress = false;
     private _pressInEvent?: GestureResponderEvent;
@@ -231,7 +225,6 @@ export default class EvergridLayout {
             offset,
             scale,
             anchor,
-            panTarget,
             panEnabled,
             verticalPanEnabled,
             horizontalPanEnabled,
@@ -358,8 +351,6 @@ export default class EvergridLayout {
         this.viewOffset$ = new Animated.ValueXY();
         sub = this.viewOffset$.addListener(p => this._onViewOffsetChange(p));
         this._animatedSubscriptions[sub] = this.viewOffset$;
-
-        this._panTarget$ = panTarget || this.viewOffset$;
 
         this._panVelocty = zeroPoint();
         this._panVelocty$ = new Animated.ValueXY();
@@ -589,11 +580,11 @@ export default class EvergridLayout {
         }
         let panGestureState: Animated.Mapping = {};
         if (this.horizontalPanEnabled) {
-            panGestureState.dx = this._panTarget$.x;
+            panGestureState.dx = this.viewOffset$.x;
             panGestureState.vx = this._panVelocty$.x;
         }
         if (this.verticalPanEnabled) {
-            panGestureState.dy = this._panTarget$.y;
+            panGestureState.dy = this.viewOffset$.y;
             panGestureState.vy = this._panVelocty$.y;
         }
         return panGestureState;
@@ -647,7 +638,7 @@ export default class EvergridLayout {
         this._descelerationAnimation?.stop();
         this._descelerationAnimation = undefined;
         this._panMapping = this.getPanMapping();
-        this._panTarget$.setValue(zeroPoint());
+        this.viewOffset$.setValue(zeroPoint());
 
         this._startInteraction();
 
@@ -685,49 +676,46 @@ export default class EvergridLayout {
             contentVelocity: velocity,
         } = this;
 
-        let isDefaultPan = this._panTarget$ === this.viewOffset$;
-        if (isDefaultPan) {
-            if (!handled && this.callbacks.snapToLocation) {
-                let scrollInfo: IScrollInfo = {
-                    location: { ...offset },
-                    velocity,
-                    offset: this.viewOffset,
-                    scaledVelocity: { ...panVelocity },
+        if (!handled && this.callbacks.snapToLocation) {
+            let scrollInfo: IScrollInfo = {
+                location: { ...offset },
+                velocity,
+                offset: this.viewOffset,
+                scaledVelocity: { ...panVelocity },
+            };
+            let maybeScrollLocation = this.callbacks.snapToLocation(scrollInfo);
+            if (typeof maybeScrollLocation !== 'undefined') {
+                // Scroll to location
+                let scrollOffset: IPoint = {
+                    ...offset,
+                    ...maybeScrollLocation,
                 };
-                let maybeScrollLocation = this.callbacks.snapToLocation(scrollInfo);
-                if (typeof maybeScrollLocation !== 'undefined') {
-                    // Scroll to location
-                    let scrollOffset: IPoint = {
-                        ...offset,
-                        ...maybeScrollLocation,
-                    };
-                    this.scrollToOffset({
-                        offset: scrollOffset,
-                        spring: { velocity },
-                        animated: true,
-                    });
-                    handled = true;
-                }
-            }
-
-            if (!handled) {
-                let isZeroVelocity = Math.abs(panVelocity.x) < kPanSpeedMin && Math.abs(panVelocity.y) < kPanSpeedMin;
-                if (!isZeroVelocity) {
-                    // Decay velocity
-                    this._descelerationAnimation = Animated.decay(
-                        this._panTarget$, // Auto-multiplexed
-                        {
-                            velocity: panVelocity,
-                            useNativeDriver: this.useNativeDriver,
-                        }
-                    );
-                    this._onStartDeceleration();
-                    this._descelerationAnimation.start(info => this._onEndDeceleration(info));
-                } else {
-                    this._onEndDeceleration({ finished: true });
-                }
+                this.scrollToOffset({
+                    offset: scrollOffset,
+                    spring: { velocity },
+                    animated: true,
+                });
                 handled = true;
             }
+        }
+
+        if (!handled) {
+            let isZeroVelocity = Math.abs(panVelocity.x) < kPanSpeedMin && Math.abs(panVelocity.y) < kPanSpeedMin;
+            if (!isZeroVelocity) {
+                // Decay velocity
+                this._descelerationAnimation = Animated.decay(
+                    this.viewOffset$, // Auto-multiplexed
+                    {
+                        velocity: panVelocity,
+                        useNativeDriver: this.useNativeDriver,
+                    }
+                );
+                this._onStartDeceleration();
+                this._descelerationAnimation.start(info => this._onEndDeceleration(info));
+            } else {
+                this._onEndDeceleration({ finished: true });
+            }
+            handled = true;
         }
 
         this._panVelocty = zeroPoint();
@@ -739,7 +727,7 @@ export default class EvergridLayout {
 
     private _onEndDeceleration(info: { finished: boolean }) {
         this._transferViewOffsetToLocation();
-        this._panTarget$.setValue(zeroPoint());
+        this.viewOffset$.setValue(zeroPoint());
         this._descelerationAnimation = undefined;
         this._endInteration();
     }
