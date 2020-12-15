@@ -1167,13 +1167,16 @@ export default class EvergridLayout {
     scrollBy(
         options: { offset: Partial<IPoint> } & IAnimationBaseOptions
     ): Animated.CompositeAnimation | undefined {
+        if (!options.offset.x && !options.offset.y) {
+            return undefined;
+        }
         let offset = { ...this._locationOffsetBase };
         let hasOffset = false;
-        if (typeof options.offset.x !== 'undefined') {
+        if (options.offset.x) {
             offset.x += options.offset.x;
             hasOffset = true;
         }
-        if (typeof options.offset.y !== 'undefined') {
+        if (options.offset.y) {
             offset.y += options.offset.y;
             hasOffset = true;
         }
