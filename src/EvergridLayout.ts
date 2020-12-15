@@ -205,6 +205,7 @@ export default class EvergridLayout {
     private _panVelocty$: Animated.ValueXY;
     private _panVelocty: IPoint;
     private _panStarted = false;
+    private _panMapping?: Animated.Mapping;
     private _panDefaultPrevented = false;
     private _panTarget$: Animated.ValueXY;
     private _longPressTimer?: any;
@@ -376,15 +377,6 @@ export default class EvergridLayout {
         this.panEnabled = panEnabled;
 
         if (panEnabled) {
-            let panGestureState: Animated.Mapping = {};
-            if (horizontalPanEnabled) {
-                panGestureState.dx = this._panTarget$.x;
-                panGestureState.vx = this._panVelocty$.x;
-            }
-            if (verticalPanEnabled) {
-                panGestureState.dy = this._panTarget$.y;
-                panGestureState.vy = this._panVelocty$.y;
-            }
             const aquire = () => {
                 return (e: GestureResponderEvent): boolean => {
                     if (!panEnabled) {
@@ -403,11 +395,11 @@ export default class EvergridLayout {
                 // onMoveShouldSetPanResponderCapture: aquire(),
                 onPanResponderStart: removeDefaultCurry((e, g) => this._onBeginPan(e, g)),
                 onPanResponderMove: (...args: any[]) => {
-                    if (this._panDefaultPrevented) {
+                    if (this._panDefaultPrevented || !this._panMapping) {
                         return;
                     }
                     Animated.event(
-                        [null, panGestureState],
+                        [null, this._panMapping],
                         {
                             // listener: event => {},
                             useNativeDriver: this.useNativeDriver
@@ -591,6 +583,22 @@ export default class EvergridLayout {
         }
     }
 
+    getPanMapping(): Animated.Mapping | undefined {
+        if (!this.horizontalPanEnabled && !this.verticalPanEnabled) {
+            return undefined;
+        }
+        let panGestureState: Animated.Mapping = {};
+        if (this.horizontalPanEnabled) {
+            panGestureState.dx = this._panTarget$.x;
+            panGestureState.vx = this._panVelocty$.x;
+        }
+        if (this.verticalPanEnabled) {
+            panGestureState.dy = this._panTarget$.y;
+            panGestureState.vy = this._panVelocty$.y;
+        }
+        return panGestureState;
+    }
+
     private _startLongPressTimer() {
         this._resetLongPress();
         let maxDist = this.longPressMaxDistance || kDefaultProps.longPressMaxDistance;
@@ -638,6 +646,7 @@ export default class EvergridLayout {
         this._panDefaultPrevented = false;
         this._descelerationAnimation?.stop();
         this._descelerationAnimation = undefined;
+        this._panMapping = this.getPanMapping();
         this._panTarget$.setValue(zeroPoint());
 
         this._startInteraction();
