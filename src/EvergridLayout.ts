@@ -113,6 +113,8 @@ export interface EvergridLayoutProps extends EvergridLayoutPrimitiveProps {
     layoutSources?: LayoutSource<any>[];
     /** Initial offset in content coordinates. */
     offset?: AnimatedValueXYDerivedInput<EvergridLayout>;
+    /** Initial offset in view coordinates. */
+    viewOffset?: AnimatedValueXYDerivedInput<EvergridLayout>;
     /** Scale relating content and view coordinate systems. */
     scale?: AnimatedValueXYDerivedInput<EvergridLayout>;
     /**
@@ -228,6 +230,7 @@ export default class EvergridLayout {
         let {
             layoutSources,
             offset,
+            viewOffset,
             scale,
             anchor,
             panTarget,
@@ -353,8 +356,15 @@ export default class EvergridLayout {
         });
         this._animatedSubscriptions[sub] = this._locationOffsetBase$;
 
-        this._viewOffset = zeroPoint();
-        this.viewOffset$ = new Animated.ValueXY();
+        this.viewOffset$ = normalizeAnimatedDerivedValueXY(viewOffset, {
+            info: this,
+        });
+        this._viewOffset = {
+            // @ts-ignore: _value is private
+            x: this.viewOffset$.x._value || 0,
+            // @ts-ignore: _value is private
+            y: this.viewOffset$.y._value || 0,
+        };
         sub = this.viewOffset$.addListener(p => this._onViewOffsetChange(p));
         this._animatedSubscriptions[sub] = this.viewOffset$;
 
@@ -426,6 +436,10 @@ export default class EvergridLayout {
             }
             this.panResponder = PanResponder.create(panConfig);
         }
+
+        // In case a view offset was specified, transfer this
+        // offset to location.
+        this._transferViewOffsetToLocation();
 
         this.setLayoutSources(layoutSources || []);
     }
