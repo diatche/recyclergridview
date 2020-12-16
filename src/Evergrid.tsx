@@ -1,6 +1,7 @@
 import React from "react";
 import {
     Animated,
+    View,
     ViewProps,
 } from "react-native";
 import ItemView from "./ItemView";
@@ -18,7 +19,7 @@ export interface ItemRenderInfo<T = any, C = any> {
 export type ItemRenderMapInput = { [layoutSourceID: string]: ItemRenderInfo | ItemRenderCallback } | ItemRenderCallback;
 export type ItemRenderMap = { [layoutSourceID: string]: ItemRenderInfo };
 
-export interface EvergridProps extends ViewProps {
+export interface EvergridProps extends Animated.AnimatedProps<ViewProps> {
     renderItem: ItemRenderMapInput;
     layout: EvergridLayout;
     scrollLock?: boolean;
