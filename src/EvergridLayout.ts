@@ -1275,6 +1275,7 @@ export default class EvergridLayout {
                 }
             }
             if (hasAxis) {
+                offset = partialOffset as IPoint;
                 scale = partialScale as IPoint;
             }
 
@@ -1300,7 +1301,7 @@ export default class EvergridLayout {
         if (!offset && !scale) {
             return undefined;
         }
-        // console.debug(`scrollTo: ${JSON.stringify(offset)}`);
+        // console.debug(`scrollTo offset: ${JSON.stringify(offset)}, scale: ${JSON.stringify(scale)}`);
 
         this._startInteraction();
 
@@ -1343,7 +1344,7 @@ export default class EvergridLayout {
         let scaleAnimation: Animated.CompositeAnimation | undefined;
         if (scale) {
             if (options.timing) {
-                offsetAnimation = Animated.timing(
+                scaleAnimation = Animated.timing(
                     this.scale$,
                     {
                         toValue: scale,
@@ -1352,7 +1353,7 @@ export default class EvergridLayout {
                     }
                 );
             } else {
-                offsetAnimation = Animated.spring(
+                scaleAnimation = Animated.spring(
                     this.scale$, // Auto-multiplexed
                     {
                         toValue: scale,
