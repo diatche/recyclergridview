@@ -1263,11 +1263,14 @@ export default class EvergridLayout {
                 let max = options.range[1][axis];
                 if (typeof min !== 'undefined' || typeof max !== 'undefined') {
                     if (typeof min === 'undefined' || typeof max === 'undefined' || max <= min) {
-                        throw new Error('Invalid range');
+                        throw new Error(`Invalid range.${axis}: [${min}, ${max}]`);
                     }
                     let len = max - min;
                     partialOffset[axis] = -min - len * this._anchor[axis];
                     partialScale[axis] = containerSize[axis] / len;
+                    if (this._scale[axis] < 0) {
+                        partialScale[axis] = -partialScale[axis]!;
+                    }
                     hasAxis = true;
                 } else {
                     partialOffset[axis] = this._locationOffsetBase[axis];
