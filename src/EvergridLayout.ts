@@ -78,6 +78,10 @@ export interface IScrollToRangeOptions {
     range: [Partial<IPoint>, Partial<IPoint>];
 }
 
+export interface IUpdateInfo {
+    initial: boolean;
+}
+
 /**
  * Note that values returned by pan responder callbacks are ignored.
  **/
@@ -876,28 +880,58 @@ export default class EvergridLayout {
         this._maybeView?.setNeedsRender();
     }
 
+    /**
+     * Called after container size has changed.
+     * 
+     * Subclasses must call super implementation.
+     */
     didChangeContainerSize() {
         this.didChangeViewportSize();
     }
 
+    /**
+     * Called after container offset has changed.
+     * 
+     * Subclasses must call super implementation.
+     */
     didChangeContainerOffset() {
 
     }
 
+    /**
+     * Called after viewport size has changed.
+     * 
+     * Subclasses must call super implementation.
+     */
     didChangeViewportSize() {
         this.setNeedsUpdate();
         this.callbacks.onViewportSizeChanged?.(this);
     }
 
+    /**
+     * Called after content location has changed.
+     * 
+     * Subclasses must call super implementation.
+     */
     didChangeLocation() {
         this.setNeedsUpdate();
     }
 
+    /**
+     * Called after scale has changed.
+     * 
+     * Subclasses must call super implementation.
+     */
     didChangeScale() {
         this.callbacks.onScaleChanged?.(this);
         this.setNeedsUpdate();
     }
 
+    /**
+     * Called after anchor has changed.
+     * 
+     * Subclasses must call super implementation.
+     */
     didChangeAnchor() {
         this.setNeedsUpdate();
     }
@@ -961,9 +995,11 @@ export default class EvergridLayout {
         // console.debug(`update`);
         this.cancelScheduledUpdate();
 
+        let initialUpdate = false;
         if (!this._hasContainerSize) {
             if (this._containerSize.x >= 1 && this._containerSize.y >= 1) {
                 this._hasContainerSize = true;
+                initialUpdate = true;
             } else {
                 // Wait for a valid container size before updating
                 return;
@@ -972,6 +1008,7 @@ export default class EvergridLayout {
         if (!this._hasScale) {
             if (this._scale.x !== 0 && this._scale.y !== 0) {
                 this._hasScale = true;
+                initialUpdate = true;
             } else {
                 // Wait for a valid scale before updating
                 return;
@@ -986,7 +1023,18 @@ export default class EvergridLayout {
         //     // Schedule render after updates only
         //     this.scheduleRender();
         // }
+
+        this.didUpdate({
+            initial: initialUpdate,
+        });
     }
+
+    /**
+     * Called after an update.
+     * 
+     * Subclasses must call super implementation.
+     */
+    didUpdate(info: IUpdateInfo) {}
 
     cancelScheduledUpdate() {
         if (this._updateTimer) {
@@ -1281,7 +1329,7 @@ export default class EvergridLayout {
         if (!offset && !scale) {
             return undefined;
         }
-        // console.debug(`scrollTo offset: ${JSON.stringify(offset)}, scale: ${JSON.stringify(scale)}`);
+        // console.debug(`scrollTo offset: ${JSON.stringify(offset, null, 2)}, scale: ${JSON.stringify(scale, null, 2)}`);
 
         this._startInteraction();
 
@@ -1289,10 +1337,11 @@ export default class EvergridLayout {
             this.beginUpdate();
             offset && this._locationOffsetBase$.setValue(offset);
             scale && this.scale$.setValue(scale);
-            this.endUpdate();
             let info = { finished: true };
             this._onEndDeceleration(info);
             options.onEnd?.(info);
+            this.endUpdate();
+            this.update();
             return undefined;
         }
 
@@ -1383,20 +1432,19 @@ export default class EvergridLayout {
         for (let axis of ['x', 'y'] as (keyof IPoint)[]) {
             let min = range[0][axis];
             let max = range[1][axis];
-            if (typeof min !== 'undefined' || typeof max !== 'undefined') {
+            if (containerSize[axis] >= 1 && (typeof min !== 'undefined' || typeof max !== 'undefined')) {
                 if (typeof min === 'undefined' || typeof max === 'undefined' || max <= min) {
                     throw new Error(`Invalid range.${axis}: [${min}, ${max}]`);
                 }
-                let len = max - min;
+                let targetLen = max - min;
                 let anchor = this._anchor[axis];
+                let scaleSign = 1;
                 if (this._scale[axis] < 0) {
+                    scaleSign = -1;
                     anchor = (1 - anchor);
                 }
-                offset[axis] = -min - len * anchor;
-                scale[axis] = containerSize[axis] / len;
-                if (this._scale[axis] < 0) {
-                    scale[axis] = -scale[axis]!;
-                }
+                offset[axis] = -min - targetLen * anchor;
+                scale[axis] = containerSize[axis] / targetLen * scaleSign;
             } else {
                 offset[axis] = this._locationOffsetBase[axis];
                 scale[axis] = this._scale[axis];
