@@ -49,6 +49,15 @@ const kDefaultProps: Required<EvergridLayoutPrimitiveProps> = {
     longPressMaxDistance: 3,
 };
 
+export const kEvergridLayoutCallbackKeys: (keyof EvergridLayoutCallbacks)[] = [
+    ...kPanPressableCallbackKeys,
+    ...kPanResponderCallbackKeys,
+    'snapToLocation',
+    'onViewportSizeChanged',
+    'onScaleChanged',
+    'onEndInteraction',
+];
+
 export interface IScrollInfo {
     /** Content location in content coordinates. */
     location: IPoint,
@@ -58,6 +67,14 @@ export interface IScrollInfo {
     offset: IPoint,
     /** Viewport velocity in view coordinates (pixels). */
     scaledVelocity: IPoint,
+}
+
+export interface IScrollToOffsetOptions {
+    offset: Partial<IPoint>;
+}
+
+export interface IScrollToRangeOptions {
+    range: [Partial<IPoint>, Partial<IPoint>];
 }
 
 /**
@@ -70,6 +87,7 @@ export interface EvergridLayoutCallbacks extends PanPressableCallbacks, PanRespo
      * Called when the scale changes.
      */
     onScaleChanged?: (view: EvergridLayout) => void;
+    onEndInteraction?: (view: EvergridLayout) => void;
 }
 
 interface EvergridLayoutPrimitiveProps extends PanPressableOptions {
@@ -265,7 +283,7 @@ export default class EvergridLayout {
             onViewportSizeChanged,
             onScaleChanged,
         };
-        for (let cbKey of [...kPanResponderCallbackKeys, ...kPanPressableCallbackKeys]) {
+        for (let cbKey of kEvergridLayoutCallbackKeys) {
             if (options?.[cbKey]) {
                 this.callbacks[cbKey] = options[cbKey] as any;
             }
@@ -706,7 +724,7 @@ export default class EvergridLayout {
                         ...offset,
                         ...maybeScrollLocation,
                     };
-                    this.scrollToOffset({
+                    this.scrollTo({
                         offset: scrollOffset,
                         spring: { velocity },
                         animated: true,
@@ -735,6 +753,8 @@ export default class EvergridLayout {
             }
         }
 
+
+
         this._panVelocty = zeroPoint();
     }
 
@@ -760,6 +780,11 @@ export default class EvergridLayout {
             InteractionManager.clearInteractionHandle(this._interactionHandle);
             this._interactionHandle = 0;
         }
+        this.didEndInteraction();
+    }
+
+    didEndInteraction() {
+        this.callbacks.onEndInteraction?.(this);
     }
 
     private _transferViewOffsetToLocation() {
@@ -1203,78 +1228,168 @@ export default class EvergridLayout {
         if (!hasOffset) {
             return;
         }
-        return this.scrollToOffset({
+        return this.scrollTo({
             ...options,
             offset,
         });
     }
 
-    scrollToOffset(
-        options: { offset: Partial<IPoint> } & IAnimationBaseOptions
+    scrollTo(
+        options: (IScrollToOffsetOptions | IScrollToRangeOptions) & IAnimationBaseOptions
     ): Animated.CompositeAnimation | undefined {
         if (this._panStarted) {
-            return;
+            // Pan overrides scrolling
+            return undefined;
         }
-        let offset = { ...this._locationOffsetBase };
-        let hasOffset = false;
-        if (typeof options.offset.x !== 'undefined') {
-            offset.x = options.offset.x;
-            hasOffset = true;
-        }
-        if (typeof options.offset.y !== 'undefined') {
-            offset.y = options.offset.y;
-            hasOffset = true;
-        }
-        if (!hasOffset) {
-            return;
-        }
-        // console.debug(`scrollToOffset: ${JSON.stringify(offset)}`);
-        
         this._descelerationAnimation?.stop();
         this._descelerationAnimation = undefined;
-
-        this._startInteraction();
         this._transferViewOffsetToLocation();
 
+        let offset: IPoint | undefined;
+        let scale: IPoint | undefined;
+        if ('offset' in options) {
+            offset = {
+                ...this._locationOffsetBase,
+                ...options.offset,
+            };
+        } else if ('range' in options) {
+            // Work out offset and scale
+            let hasAxis = false;
+            let partialOffset: Partial<IPoint> = {};
+            let partialScale: Partial<IPoint> = {};
+            let containerSize = this._containerSize;
+            for (let axis of ['x', 'y'] as (keyof IPoint)[]) {
+                let min = options.range[0][axis];
+                let max = options.range[1][axis];
+                if (typeof min !== 'undefined' || typeof max !== 'undefined') {
+                    if (typeof min === 'undefined' || typeof max === 'undefined' || max <= min) {
+                        throw new Error(`Invalid range.${axis}: [${min}, ${max}]`);
+                    }
+                    let len = max - min;
+                    partialOffset[axis] = -min - len * this._anchor[axis];
+                    partialScale[axis] = containerSize[axis] / len;
+                    if (this._scale[axis] < 0) {
+                        partialScale[axis] = -partialScale[axis]!;
+                    }
+                    hasAxis = true;
+                } else {
+                    partialOffset[axis] = this._locationOffsetBase[axis];
+                    partialScale[axis] = this._scale[axis];
+                }
+            }
+            if (hasAxis) {
+                offset = partialOffset as IPoint;
+                scale = partialScale as IPoint;
+            }
+
+            if (
+                scale &&
+                scale.x === this._scale.x &&
+                scale.y === this._scale.y
+            ) {
+                // No change
+                scale = undefined;
+            }
+        }
+
+        if (
+            offset &&
+            offset.x === this._locationOffsetBase.x &&
+            offset.y === this._locationOffsetBase.y
+        ) {
+            // No change
+            offset = undefined;
+        }
+
+        if (!offset && !scale) {
+            return undefined;
+        }
+        // console.debug(`scrollTo offset: ${JSON.stringify(offset)}, scale: ${JSON.stringify(scale)}`);
+
+        this._startInteraction();
+
         if (!options.animated) {
-            this._locationOffsetBase$.setValue(offset);
+            this.beginUpdate();
+            offset && this._locationOffsetBase$.setValue(offset);
+            scale && this.scale$.setValue(scale);
+            this.endUpdate();
             let info = { finished: true };
             this._onEndDeceleration(info);
             options.onEnd?.(info);
-            return;
+            return undefined;
         }
 
-        if (options.timing) {
-            this._descelerationAnimation = Animated.timing(
-                this._locationOffsetBase$,
-                {
-                    toValue: offset,
-                    ...options.timing,
-                    useNativeDriver: this.useNativeDriver,
-                }
-            );
-        } else {
-            this._descelerationAnimation = Animated.spring(
-                this._locationOffsetBase$, // Auto-multiplexed
-                {
-                    toValue: offset,
-                    velocity: options.spring?.velocity || this.contentVelocity,
-                    bounciness: 0,
-                    ...options.spring,
-                    useNativeDriver: this.useNativeDriver,
-                }
-            );
+        let offsetAnimation: Animated.CompositeAnimation | undefined;
+        if (offset) {
+            if (options.timing) {
+                offsetAnimation = Animated.timing(
+                    this._locationOffsetBase$,
+                    {
+                        toValue: offset,
+                        ...options.timing,
+                        useNativeDriver: this.useNativeDriver,
+                    }
+                );
+            } else {
+                offsetAnimation = Animated.spring(
+                    this._locationOffsetBase$, // Auto-multiplexed
+                    {
+                        toValue: offset,
+                        velocity: options.spring?.velocity || this.contentVelocity,
+                        bounciness: 0,
+                        ...options.spring,
+                        useNativeDriver: this.useNativeDriver,
+                    }
+                );
+            }
         }
+
+        let scaleAnimation: Animated.CompositeAnimation | undefined;
+        if (scale) {
+            if (options.timing) {
+                scaleAnimation = Animated.timing(
+                    this.scale$,
+                    {
+                        toValue: scale,
+                        ...options.timing,
+                        useNativeDriver: this.useNativeDriver,
+                    }
+                );
+            } else {
+                scaleAnimation = Animated.spring(
+                    this.scale$, // Auto-multiplexed
+                    {
+                        toValue: scale,
+                        bounciness: 0,
+                        ...options.spring,
+                        useNativeDriver: this.useNativeDriver,
+                    }
+                );
+            }
+        }
+
+        let compositeAnimation: Animated.CompositeAnimation;
+        if (offsetAnimation && scaleAnimation) {
+            compositeAnimation = Animated.parallel([offsetAnimation, scaleAnimation]);
+        } else if (offsetAnimation) {
+            compositeAnimation = offsetAnimation;
+        } else if (scaleAnimation) {
+            compositeAnimation = scaleAnimation;
+        } else {
+            throw new Error('Invalid animation');
+        }
+        this._descelerationAnimation = compositeAnimation;
+
         if (!options.manualStart) {
             this._onStartDeceleration();
-            this._descelerationAnimation.start(info => {
+            compositeAnimation.start(info => {
                 this._onEndDeceleration(info);
                 options.onEnd?.(info);
             });
         } else {
             this._endInteration();
         }
-        return this._descelerationAnimation;
+        return compositeAnimation;
     }
 
     createItemViewRef(): React.RefObject<ItemView> {
