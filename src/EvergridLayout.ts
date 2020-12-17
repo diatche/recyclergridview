@@ -2,6 +2,7 @@ import React from "react";
 import {
     Animated,
     AppState,
+    Easing,
     GestureResponderEvent,
     InteractionManager,
     PanResponder,
@@ -1254,46 +1255,9 @@ export default class EvergridLayout {
             };
         } else if ('range' in options) {
             // Work out offset and scale
-            let hasAxis = false;
-            let partialOffset: Partial<IPoint> = {};
-            let partialScale: Partial<IPoint> = {};
-            let containerSize = this._containerSize;
-            for (let axis of ['x', 'y'] as (keyof IPoint)[]) {
-                let min = options.range[0][axis];
-                let max = options.range[1][axis];
-                if (typeof min !== 'undefined' || typeof max !== 'undefined') {
-                    if (typeof min === 'undefined' || typeof max === 'undefined' || max <= min) {
-                        throw new Error(`Invalid range.${axis}: [${min}, ${max}]`);
-                    }
-                    let len = max - min;
-                    let anchor = this._anchor[axis];
-                    if (this._scale[axis] < 0) {
-                        anchor = (1 - anchor);
-                    }
-                    partialOffset[axis] = -min - len * anchor;
-                    partialScale[axis] = containerSize[axis] / len;
-                    if (this._scale[axis] < 0) {
-                        partialScale[axis] = -partialScale[axis]!;
-                    }
-                    hasAxis = true;
-                } else {
-                    partialOffset[axis] = this._locationOffsetBase[axis];
-                    partialScale[axis] = this._scale[axis];
-                }
-            }
-            if (hasAxis) {
-                offset = partialOffset as IPoint;
-                scale = partialScale as IPoint;
-            }
-
-            if (
-                scale &&
-                scale.x === this._scale.x &&
-                scale.y === this._scale.y
-            ) {
-                // No change
-                scale = undefined;
-            }
+            let res = this.getTransformForContentRange(options.range);
+            offset = res.offset;
+            scale = res.scale;
         }
 
         if (
@@ -1303,6 +1267,15 @@ export default class EvergridLayout {
         ) {
             // No change
             offset = undefined;
+        }
+
+        if (
+            scale &&
+            scale.x === this._scale.x &&
+            scale.y === this._scale.y
+        ) {
+            // No change
+            scale = undefined;
         }
 
         if (!offset && !scale) {
@@ -1330,6 +1303,7 @@ export default class EvergridLayout {
                     this._locationOffsetBase$,
                     {
                         toValue: offset,
+                        easing: Easing.inOut(Easing.exp),
                         ...options.timing,
                         useNativeDriver: this.useNativeDriver,
                     }
@@ -1355,6 +1329,7 @@ export default class EvergridLayout {
                     this.scale$,
                     {
                         toValue: scale,
+                        easing: Easing.inOut(Easing.exp),
                         ...options.timing,
                         useNativeDriver: this.useNativeDriver,
                     }
@@ -1394,6 +1369,43 @@ export default class EvergridLayout {
             this._endInteration();
         }
         return compositeAnimation;
+    }
+
+    getTransformForContentRange(
+        range: [Partial<IPoint>, Partial<IPoint>],
+    ): {
+        offset: IPoint;
+        scale: IPoint;
+    } {
+        let offset: Partial<IPoint> = {};
+        let scale: Partial<IPoint> = {};
+        let containerSize = this._containerSize;
+        for (let axis of ['x', 'y'] as (keyof IPoint)[]) {
+            let min = range[0][axis];
+            let max = range[1][axis];
+            if (typeof min !== 'undefined' || typeof max !== 'undefined') {
+                if (typeof min === 'undefined' || typeof max === 'undefined' || max <= min) {
+                    throw new Error(`Invalid range.${axis}: [${min}, ${max}]`);
+                }
+                let len = max - min;
+                let anchor = this._anchor[axis];
+                if (this._scale[axis] < 0) {
+                    anchor = (1 - anchor);
+                }
+                offset[axis] = -min - len * anchor;
+                scale[axis] = containerSize[axis] / len;
+                if (this._scale[axis] < 0) {
+                    scale[axis] = -scale[axis]!;
+                }
+            } else {
+                offset[axis] = this._locationOffsetBase[axis];
+                scale[axis] = this._scale[axis];
+            }
+        }
+        return {
+            offset: offset as IPoint,
+            scale: scale as IPoint,
+        };
     }
 
     createItemViewRef(): React.RefObject<ItemView> {
