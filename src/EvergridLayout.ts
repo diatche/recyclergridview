@@ -24,6 +24,7 @@ import {
     IAnimationBaseOptions,
     PanPressableOptions,
     PanPressableCallbacks,
+    IInsets,
 } from "./types";
 import {
     weakref,
@@ -856,6 +857,27 @@ export default class EvergridLayout {
         };
     }
 
+    getContainerSize(
+        options?: {
+            insets: Partial<IInsets<number>>;
+        },
+    ): IPoint {
+        if (options?.insets) {
+            let {
+                left = 0,
+                right = 0,
+                top = 0,
+                bottom = 0,
+            } = options?.insets || {};
+            return {
+                x: this._containerSize.x - left - right,
+                y: this._containerSize.y - top - bottom,
+            };
+        } else {
+            return { ...this._containerSize };
+        }
+    }
+
     get containerSize(): IPoint {
         return { ...this._containerSize };
     }
@@ -1047,13 +1069,27 @@ export default class EvergridLayout {
         return { ...this._scale };
     }
 
-    getVisibleLocationRange(): [IPoint, IPoint] {
+    getVisibleLocationRange(
+        options?: {
+            insets: Partial<IInsets<number>>;
+        },
+    ): [IPoint, IPoint] {
         let { x: width, y: height } = this.containerSize;
+        let {
+            left = 0,
+            right = 0,
+            top = 0,
+            bottom = 0,
+        } = options?.insets || {};
+        width -= left + right;
+        height -= top + bottom;
         if (width < 1 || height < 1) {
             return [zeroPoint(), zeroPoint()];
         }
         let { x, y } = this.viewOffset;
         let scale = this.scale;
+        x += scale.x > 0 ? left : right;
+        y += scale.y > 0 ? top : bottom;
         let startOffset = {
             x: Math.ceil(x),
             y: Math.floor(y),
