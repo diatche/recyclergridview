@@ -898,8 +898,8 @@ export default abstract class LayoutSource<
         let { x, y } = this._maybeRoot?.viewOffset || zeroPoint();
         let scale = this.getScale();
         return {
-            x: x + (scale.x > 0 ? -this._insets.left : this._insets.right),
-            y: y + (scale.y > 0 ? -this._insets.top : this._insets.bottom),
+            x: x + (scale.x > 0 ? -this._insets.left : 0),
+            y: y + (scale.y > 0 ? -this._insets.top : 0),
         };
     }
     
@@ -917,7 +917,7 @@ export default abstract class LayoutSource<
         return this.props.getItemViewLayout?.(index, this);
     }
 
-    willUseItemViewLayout(index: T, layout: ILayout<IAnimatedPoint>) {
+    willUseItemViewLayout(index: T, layout: ILayout<IAnimatedPoint>): void {
         return this.props.willUseItemViewLayout?.(index, layout, this);
     }
 
