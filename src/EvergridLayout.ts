@@ -878,6 +878,33 @@ export default class EvergridLayout {
         }
     }
 
+    getContainerSize$(
+        options?: {
+            insets: Partial<IInsets<Animated.Animated>>;
+        },
+    ): IAnimatedPoint {
+        if (options?.insets) {
+            let {
+                left = 0,
+                right = 0,
+                top = 0,
+                bottom = 0,
+            } = options?.insets || {};
+            return {
+                x: Animated.subtract(
+                    this._containerSize.x,
+                    Animated.add(left, right),
+                ),
+                y: Animated.subtract(
+                    this._containerSize.y,
+                    Animated.add(top, bottom),
+                ),
+            };
+        } else {
+            return { ...this.containerSize$ };
+        }
+    }
+
     get containerSize(): IPoint {
         return { ...this._containerSize };
     }
