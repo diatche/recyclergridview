@@ -1351,6 +1351,7 @@ export default class EvergridLayout {
     ): Animated.CompositeAnimation | undefined {
         if (this._panStarted) {
             // Pan overrides scrolling
+            options.onEnd?.({ finished: false });
             return undefined;
         }
         this._descelerationAnimation?.stop();
@@ -1390,6 +1391,7 @@ export default class EvergridLayout {
         }
 
         if (!offset && !scale) {
+            options.onEnd?.({ finished: true });
             return undefined;
         }
         // console.debug(`scrollTo offset: ${JSON.stringify(offset, null, 2)}, scale: ${JSON.stringify(scale, null, 2)}`);
