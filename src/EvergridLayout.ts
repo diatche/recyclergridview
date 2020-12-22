@@ -900,11 +900,11 @@ export default class EvergridLayout {
             } = options?.insets || {};
             return {
                 x: Animated.subtract(
-                    this._containerSize.x,
+                    this.containerSize$.x,
                     Animated.add(left, right),
                 ),
                 y: Animated.subtract(
-                    this._containerSize.y,
+                    this.containerSize$.y,
                     Animated.add(top, bottom),
                 ),
             };
