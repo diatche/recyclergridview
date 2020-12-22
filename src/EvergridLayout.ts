@@ -93,6 +93,7 @@ export interface EvergridLayoutCallbacks extends PanPressableCallbacks, PanRespo
      * Called when the scale changes.
      */
     onScaleChanged?: (view: EvergridLayout) => void;
+    onStartInteraction?: (view: EvergridLayout) => void;
     onEndInteraction?: (view: EvergridLayout) => void;
 }
 
@@ -759,8 +760,6 @@ export default class EvergridLayout {
             }
         }
 
-
-
         this._panVelocty = zeroPoint();
     }
 
@@ -778,6 +777,7 @@ export default class EvergridLayout {
     private _startInteraction() {
         if (!this._interactionHandle) {
             this._interactionHandle = InteractionManager.createInteractionHandle();
+            this.didStartInteraction();
         }
     }
 
@@ -785,8 +785,16 @@ export default class EvergridLayout {
         if (this._interactionHandle) {
             InteractionManager.clearInteractionHandle(this._interactionHandle);
             this._interactionHandle = 0;
+            this.didEndInteraction();
         }
-        this.didEndInteraction();
+    }
+
+    get isInteracting(): boolean {
+        return this._panStarted || !!this._interactionHandle;
+    }
+
+    didStartInteraction() {
+        this.callbacks.onStartInteraction?.(this);
     }
 
     didEndInteraction() {
