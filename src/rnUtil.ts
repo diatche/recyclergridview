@@ -10,6 +10,7 @@ import {
     IAnimatedPointInput,
     IAnimatedValueXYInput,
     IAnimationBaseOptions,
+    IInsets,
     IPartialLayout,
 } from './types';
 import { parseRelativeValue, zeroPoint } from './util';
@@ -255,3 +256,86 @@ export const animateValueIfNeeded = (
 
 //     return packageRoot;
 // };
+
+
+export function insetSize$(size: IAnimatedPoint, insets: Partial<IInsets<Animated.Animated>>): IAnimatedPoint {
+    let {
+        left = 0,
+        right = 0,
+        top = 0,
+        bottom = 0,
+    } = insets;
+    let p = { ...size };
+
+    let insetWidth: Animated.Animated = 0;
+    if (left && right) {
+        insetWidth = Animated.add(left, right);
+    } else if (left) {
+        insetWidth = left;
+    } else {
+        insetWidth = right;
+    }
+    if (insetWidth) {
+        p.x = Animated.subtract(p.x, insetWidth);
+    }
+
+    let insetHeight: Animated.Animated = 0;
+    if (top && bottom) {
+        insetHeight = Animated.add(top, bottom);
+    } else if (top) {
+        insetHeight = top;
+    } else {
+        insetHeight = bottom;
+    }
+    if (insetHeight) {
+        p.y = Animated.subtract(p.y, insetHeight);
+    }
+
+    return p;
+}
+
+export function insetPoint$(
+    point: IAnimatedPoint,
+    insets: Partial<IInsets<Animated.Animated>>,
+    options?: {
+        invertX?: boolean;
+        invertY?: boolean;
+    },
+): IAnimatedPoint {
+    let {
+        left = 0,
+        right = 0,
+        top = 0,
+        bottom = 0,
+    } = insets;
+    let invertX = false;
+    let invertY = false;
+    if (options) {
+        invertX = !!options.invertX;
+        invertY = !!options.invertY;
+    }
+    let p = { ...point };
+
+    if (invertX) {
+        if (right) {
+            p.x = Animated.subtract(p.x, right);
+        }
+    } else {
+        if (left) {
+            p.x = Animated.add(p.x, left);
+        }
+    }
+
+    if (invertY) {
+        if (bottom) {
+            p.y = Animated.subtract(p.y, bottom);
+        }
+    } else {
+        if (top) {
+            p.y = Animated.add(p.y, top);
+        }
+    }
+
+    return p;
+}
+

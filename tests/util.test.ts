@@ -4,6 +4,8 @@ import {
     forEachInstertedIndexInRange,
     forEachInstertedPointInRange,
     parseRelativeValue,
+    insetSize,
+    insetPoint,
 } from '../src/util';
 
 
@@ -156,6 +158,60 @@ describe('util', () => {
             expect(parseRelativeValue('3')).toBe(3);
             expect(parseRelativeValue('0.4')).toBe(0.4);
             expect(parseRelativeValue('-100')).toBe(-100);
+        });
+    });
+
+    describe('insetSize', () => {
+
+        it('should inset size correctly', () => {
+            expect(insetSize({
+                x: 10,
+                y: 10,
+            }, {
+                left: 1,
+                right: 2,
+                top: 3,
+                bottom: 4,
+            })).toEqual({
+                x: 7,
+                y: 3,
+            });
+        });
+    });
+
+    describe('insetPoint', () => {
+
+        it('should inset point correctly in natural direction', () => {
+            expect(insetPoint({
+                x: 10,
+                y: 10,
+            }, {
+                left: 1,
+                right: 2,
+                top: 3,
+                bottom: 4,
+            })).toEqual({
+                x: 11,
+                y: 13,
+            });
+        });
+
+        it('should inset point correctly in inverted direction', () => {
+            expect(insetPoint({
+                x: 10,
+                y: 10,
+            }, {
+                left: 1,
+                right: 2,
+                top: 3,
+                bottom: 4,
+            }, {
+                invertX: true,
+                invertY: true,
+            })).toEqual({
+                x: 12,
+                y: 14,
+            });
         });
     });
 });

@@ -27,11 +27,14 @@ import {
     IInsets,
 } from "./types";
 import {
+    insetPoint,
+    insetSize,
     weakref,
     zeroPoint,
 } from "./util";
 import {
     concatFunctions,
+    insetSize$,
     negate$,
     normalizeAnimatedDerivedValueXY,
     removeDefaultCurry,
@@ -77,6 +80,7 @@ export interface IScrollToOffsetOptions {
 
 export interface IScrollToRangeOptions {
     range: [Partial<IPoint>, Partial<IPoint>];
+    insets?: Partial<IInsets<number>>;
 }
 
 export interface IUpdateInfo {
@@ -867,20 +871,11 @@ export default class EvergridLayout {
 
     getContainerSize(
         options?: {
-            insets: Partial<IInsets<number>>;
+            insets?: Partial<IInsets<number>>;
         },
     ): IPoint {
         if (options?.insets) {
-            let {
-                left = 0,
-                right = 0,
-                top = 0,
-                bottom = 0,
-            } = options?.insets || {};
-            return {
-                x: this._containerSize.x - left - right,
-                y: this._containerSize.y - top - bottom,
-            };
+            return insetSize(this._containerSize, options.insets);
         } else {
             return { ...this._containerSize };
         }
@@ -888,26 +883,11 @@ export default class EvergridLayout {
 
     getContainerSize$(
         options?: {
-            insets: Partial<IInsets<Animated.Animated>>;
+            insets?: Partial<IInsets<Animated.Animated>>;
         },
     ): IAnimatedPoint {
         if (options?.insets) {
-            let {
-                left = 0,
-                right = 0,
-                top = 0,
-                bottom = 0,
-            } = options?.insets || {};
-            return {
-                x: Animated.subtract(
-                    this.containerSize$.x,
-                    Animated.add(left, right),
-                ),
-                y: Animated.subtract(
-                    this.containerSize$.y,
-                    Animated.add(top, bottom),
-                ),
-            };
+            return insetSize$(this.containerSize$, options.insets);
         } else {
             return { ...this.containerSize$ };
         }
@@ -1106,32 +1086,35 @@ export default class EvergridLayout {
 
     getVisibleLocationRange(
         options?: {
-            insets: Partial<IInsets<number>>;
+            insets?: Partial<IInsets<number>>;
         },
     ): [IPoint, IPoint] {
-        let { x: width, y: height } = this.containerSize;
-        let {
-            left = 0,
-            right = 0,
-            top = 0,
-            bottom = 0,
-        } = options?.insets || {};
-        width -= left + right;
-        height -= top + bottom;
-        if (width < 1 || height < 1) {
+        let size = this.containerSize;
+        if (options?.insets) {
+            size = insetSize(size, options.insets);
+        }
+        if (size.x < 1 || size.y < 1) {
             return [zeroPoint(), zeroPoint()];
         }
-        let { x, y } = this.viewOffset;
+        let offset = this.viewOffset;
         let scale = this.scale;
-        x += scale.x > 0 ? left : right;
-        y += scale.y > 0 ? top : bottom;
+        if (options?.insets) {
+            offset = insetPoint(
+                offset,
+                options.insets,
+                {
+                    invertX: scale.x < 0,
+                    invertY: scale.y < 0,
+                }
+            );
+        }
         let startOffset = {
-            x: Math.ceil(x),
-            y: Math.floor(y),
+            x: Math.ceil(offset.x),
+            y: Math.floor(offset.y),
         };
         let endOffset = {
-            x: Math.floor(x - width),
-            y: Math.ceil(y - height),
+            x: Math.floor(offset.x - size.x),
+            y: Math.ceil(offset.y - size.y),
         };
         if (scale.x < 0) {
             let xSave = startOffset.x;
@@ -1375,7 +1358,7 @@ export default class EvergridLayout {
             };
         } else if ('range' in options) {
             // Work out offset and scale
-            let res = this.getTransformForContentRange(options.range);
+            let res = this.getTransformForContentRange(options.range, options);
             offset = res.offset;
             scale = res.scale;
         }
@@ -1495,6 +1478,9 @@ export default class EvergridLayout {
 
     getTransformForContentRange(
         range: [Partial<IPoint>, Partial<IPoint>],
+        options?: {
+            insets?: Partial<IInsets<number>>;
+        }
     ): {
         offset: IPoint;
         scale: IPoint;
@@ -1502,6 +1488,9 @@ export default class EvergridLayout {
         let offset: Partial<IPoint> = {};
         let scale: Partial<IPoint> = {};
         let containerSize = this._containerSize;
+        if (options?.insets) {
+            containerSize = insetSize(containerSize, options.insets);
+        }
         for (let axis of ['x', 'y'] as (keyof IPoint)[]) {
             let min = range[0][axis];
             let max = range[1][axis];
@@ -1522,6 +1511,18 @@ export default class EvergridLayout {
                 offset[axis] = this._locationOffsetBase[axis];
                 scale[axis] = this._scale[axis];
             }
+        }
+        if (options?.insets) {
+            let insetOffset = insetPoint(
+                zeroPoint(),
+                options.insets,
+                {
+                    invertX: this._scale.x < 0,
+                    invertY: this._scale.y < 0,
+                },
+            );
+            offset.x! += insetOffset.x / scale.x!;
+            offset.y! += insetOffset.y / scale.y!;
         }
         return {
             offset: offset as IPoint,

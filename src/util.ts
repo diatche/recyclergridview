@@ -1,4 +1,5 @@
 import {
+    IInsets,
     IItemLayout,
     ILayout,
     IPoint,
@@ -271,3 +272,42 @@ export function weakref<T = any>(value?: T) {
 //     }
 //     return x;
 // };
+
+export function insetSize(size: IPoint, insets: Partial<IInsets<number>>): IPoint {
+    let {
+        left = 0,
+        right = 0,
+        top = 0,
+        bottom = 0,
+    } = insets;
+    return {
+        x: size.x - left - right,
+        y: size.y - top - bottom,
+    };
+}
+
+export function insetPoint(
+    point: IPoint,
+    insets: Partial<IInsets<number>>,
+    options?: {
+        invertX?: boolean;
+        invertY?: boolean;
+    },
+): IPoint {
+    let {
+        left = 0,
+        right = 0,
+        top = 0,
+        bottom = 0,
+    } = insets;
+    let invertX = false;
+    let invertY = false;
+    if (options) {
+        invertX = !!options.invertX;
+        invertY = !!options.invertY;
+    }
+    return {
+        x: point.x + (invertX ? right : left),
+        y: point.y + (invertY ? bottom : top),
+    };
+}
