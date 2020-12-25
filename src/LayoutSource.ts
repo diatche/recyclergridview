@@ -670,7 +670,9 @@ export default abstract class LayoutSource<
      * coordinates based on the sticky edge, if any,
      * otherwise empty.
      */
-    applyStickyContainerLocation$(layout: ILayout<IAnimatedPoint>) {
+    applyStickyContainerLocation$(layout: ILayout<IAnimatedPoint>, options: {
+        originalAnchor: IAnimatedPoint;
+    }) {
         if (!this.props.stickyEdge) {
             return {};
         }
@@ -679,13 +681,13 @@ export default abstract class LayoutSource<
             case 'top':
                 layout.offset.y = this.insets$.top;
                 if (scale.y < 0) {
-                    layout.anchor.y = Animated.subtract(1, layout.anchor.y);
+                    layout.anchor.y = options.originalAnchor.y;
                 }
                 return;
             case 'left':
                 layout.offset.x = this.insets$.left;
                 if (scale.x < 0) {
-                    layout.anchor.x = Animated.subtract(1, layout.anchor.x);
+                    layout.anchor.x = options.originalAnchor.x;
                 }
                 return;
             default:
@@ -699,7 +701,7 @@ export default abstract class LayoutSource<
                     this.insets$.bottom,
                 );
                 if (scale.y > 0) {
-                    layout.anchor.y = Animated.subtract(1, layout.anchor.y);
+                    layout.anchor.y = Animated.subtract(1, options.originalAnchor.y);
                 }
                 return;
             case 'right':
@@ -708,7 +710,7 @@ export default abstract class LayoutSource<
                     this.insets$.right,
                 );
                 if (scale.x > 0) {
-                    layout.anchor.x = Animated.subtract(1, layout.anchor.x);
+                    layout.anchor.x = Animated.subtract(1, options.originalAnchor.x);
                 }
                 return;
             default:
@@ -919,7 +921,9 @@ export default abstract class LayoutSource<
             anchor,
         };
 
-        this.applyStickyContainerLocation$(layout);
+        this.applyStickyContainerLocation$(layout, {
+            originalAnchor: this.itemOrigin$,
+        });
 
         return layout;
     }
