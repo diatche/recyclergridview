@@ -1502,9 +1502,18 @@ export default class EvergridLayout {
     } {
         let offset: IPoint = { ...this._locationOffsetBase };
         let scale: IPoint = { ...this._scale };
+        let insetOffset = zeroPoint();
         let containerSize = this._containerSize;
         if (options?.insets) {
             containerSize = insetSize(containerSize, options.insets);
+            insetOffset = insetTranslation(
+                options.insets,
+                {
+                    anchor: this._anchor,
+                    invertX: scale.x < 0,
+                    invertY: scale.y < 0,
+                },
+            );
         }
         for (let axis of ['x', 'y'] as (keyof IPoint)[]) {
             let min = range[0][axis];
@@ -1518,23 +1527,12 @@ export default class EvergridLayout {
                 let scaleSign = 1;
                 if (this._scale[axis] < 0) {
                     scaleSign = -1;
-                    // anchor = (1 - anchor);
                 }
                 offset[axis] = -min - targetLen * anchor;
                 scale[axis] = containerSize[axis] / targetLen * scaleSign;
+
+                offset[axis] += insetOffset[axis] / Math.abs(scale[axis]);
             }
-        }
-        if (options?.insets) {
-            let insetOffset = insetTranslation(
-                options.insets,
-                {
-                    anchor: this._anchor,
-                    invertX: scale.x < 0,
-                    invertY: scale.y < 0,
-                },
-            );
-            offset.x += insetOffset.x / Math.abs(scale.x);
-            offset.y += insetOffset.y / Math.abs(scale.y);
         }
         return { offset, scale };
     }
