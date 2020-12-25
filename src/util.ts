@@ -286,10 +286,20 @@ export function insetSize(size: IPoint, insets: Partial<IInsets<number>>): IPoin
     };
 }
 
-export function insetPoint(
-    point: IPoint,
+/**
+ * Returns an offset based on given insets.
+ * 
+ * The positive direction of y is down.
+ * To reverse this, set invertY to `true`.
+ * 
+ * @param point 
+ * @param insets 
+ * @param options 
+ */
+export function insetTranslation(
     insets: Partial<IInsets<number>>,
     options?: {
+        anchor?: IPoint;
         invertX?: boolean;
         invertY?: boolean;
     },
@@ -300,14 +310,49 @@ export function insetPoint(
         top = 0,
         bottom = 0,
     } = insets;
-    let invertX = false;
-    let invertY = false;
-    if (options) {
-        invertX = !!options.invertX;
-        invertY = !!options.invertY;
+    let {
+        anchor = zeroPoint(),
+        invertX = false,
+        invertY = false,
+    } = options || {};
+    if (invertX) {
+        let save = right;
+        right = left;
+        left = save;
+    }
+    if (invertY) {
+        let save = top;
+        top = bottom;
+        bottom = save;
     }
     return {
-        x: point.x + (invertX ? right : left),
-        y: point.y + (invertY ? bottom : top),
+        x: (1 - anchor.x) * left - anchor.x * right,
+        y: (1 - anchor.y) * top - anchor.y * bottom,
+    };
+}
+
+/**
+ * Offsets a point with insets.
+ * 
+ * The positive direction of y is down.
+ * To reverse this, set invertY to `true`.
+ * 
+ * @param point 
+ * @param insets 
+ * @param options 
+ */
+export function insetPoint(
+    point: IPoint,
+    insets: Partial<IInsets<number>>,
+    options?: {
+        anchor?: IPoint;
+        invertX?: boolean;
+        invertY?: boolean;
+    },
+): IPoint {
+    let offset = insetTranslation(insets, options);
+    return {
+        x: point.x + offset.x,
+        y: point.y + offset.y,
     };
 }

@@ -2,7 +2,6 @@ import {
     IItemLayout,
     LayoutSource,
     LayoutSourceProps,
-    Evergrid as Grid,
 } from "./internal";
 import {
     IAnimationBaseOptions,
@@ -45,7 +44,10 @@ export default class FlatLayoutSource extends LayoutSource<T, FlatLayoutSourcePr
         let { itemSize: size } = this;
         let axis: keyof IPoint = this.horizontal ? 'x' : 'y';
         offset[axis] = index * size[axis];
-        return { offset, size };
+        return {
+            offset,
+            size,
+        };
     }
 
     getVisibleItem(index: T): IItem<T> | undefined {

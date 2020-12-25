@@ -14,11 +14,13 @@ export interface IPoint {
 export interface ILayout<T> {
     offset: T;
     size: T;
+    anchor: T;
 }
 
 export interface IPartialLayout<T> {
     offset?: Partial<T>;
     size?: Partial<T>;
+    anchor?: Partial<T>;
 }
 
 export interface IItemLayout {

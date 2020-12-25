@@ -29,6 +29,7 @@ import {
 import {
     insetPoint,
     insetSize,
+    insetTranslation,
     weakref,
     zeroPoint,
 } from "./util";
@@ -817,9 +818,19 @@ export default class EvergridLayout {
         this.endUpdate();
     }
 
+    get anchor(): IPoint {
+        return { ...this._anchor };
+    }
+
     get containerOriginOffset(): IPoint {
         let { x: x0, y: y0 } = this._anchor;
         let { x: width, y: height } = this.containerSize;
+        if (this._scale.x < 0) {
+            x0 = 1 - x0;
+        }
+        if (this._scale.y < 0) {
+            y0 = 1 - y0;
+        }
         return {
             // x: -this._viewportInsets.left - width * x0,
             // y: -this._viewportInsets.top - height * y0,
@@ -834,11 +845,15 @@ export default class EvergridLayout {
         return {
             x: negate$(Animated.multiply(
                 width,
-                x0,
+                this._scale.x > 0 
+                    ? x0
+                    : Animated.subtract(1, x0),
             )),
             y: negate$(Animated.multiply(
                 height,
-                y0,
+                this._scale.y > 0 
+                    ? y0
+                    : Animated.subtract(1, y0),
             )),
         };
     }
@@ -1485,8 +1500,8 @@ export default class EvergridLayout {
         offset: IPoint;
         scale: IPoint;
     } {
-        let offset: Partial<IPoint> = {};
-        let scale: Partial<IPoint> = {};
+        let offset: IPoint = { ...this._locationOffsetBase };
+        let scale: IPoint = { ...this._scale };
         let containerSize = this._containerSize;
         if (options?.insets) {
             containerSize = insetSize(containerSize, options.insets);
@@ -1503,31 +1518,25 @@ export default class EvergridLayout {
                 let scaleSign = 1;
                 if (this._scale[axis] < 0) {
                     scaleSign = -1;
-                    anchor = (1 - anchor);
+                    // anchor = (1 - anchor);
                 }
                 offset[axis] = -min - targetLen * anchor;
                 scale[axis] = containerSize[axis] / targetLen * scaleSign;
-            } else {
-                offset[axis] = this._locationOffsetBase[axis];
-                scale[axis] = this._scale[axis];
             }
         }
         if (options?.insets) {
-            let insetOffset = insetPoint(
-                zeroPoint(),
+            let insetOffset = insetTranslation(
                 options.insets,
                 {
-                    invertX: this._scale.x < 0,
-                    invertY: this._scale.y < 0,
+                    anchor: this._anchor,
+                    invertX: scale.x < 0,
+                    invertY: scale.y < 0,
                 },
             );
-            offset.x! += insetOffset.x / scale.x!;
-            offset.y! += insetOffset.y / scale.y!;
+            offset.x += insetOffset.x / Math.abs(scale.x);
+            offset.y += insetOffset.y / Math.abs(scale.y);
         }
-        return {
-            offset: offset as IPoint,
-            scale: scale as IPoint,
-        };
+        return { offset, scale };
     }
 
     createItemViewRef(): React.RefObject<ItemView> {

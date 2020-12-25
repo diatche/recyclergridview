@@ -137,12 +137,16 @@ export const normalizePartialAnimatedLayout = (
 ): IPartialLayout<IAnimatedPoint> => {
     let offset = normalizePartialAnimatedPoint(layout?.offset, options);
     let size = normalizePartialAnimatedPoint(layout?.size, options);
+    let anchor = normalizePartialAnimatedPoint(layout?.anchor, options);
     let normLayout: IPartialLayout<IAnimatedPoint> = {};
     if (offset) {
         normLayout.offset = offset;
     }
     if (size) {
         normLayout.size = size;
+    }
+    if (anchor) {
+        normLayout.anchor = anchor;
     }
     return normLayout;
 };
@@ -294,10 +298,20 @@ export function insetSize$(size: IAnimatedPoint, insets: Partial<IInsets<Animate
     return p;
 }
 
-export function insetPoint$(
-    point: IAnimatedPoint,
+/**
+ * Returns an offset based on given insets.
+ * 
+ * The positive direction of y is down.
+ * To reverse this, set invertY to `true`.
+ * 
+ * @param point 
+ * @param insets 
+ * @param options 
+ */
+export function insetTranslation$(
     insets: Partial<IInsets<Animated.Animated>>,
     options?: {
+        anchor?: IAnimatedPoint;
         invertX?: boolean;
         invertY?: boolean;
     },
@@ -308,34 +322,62 @@ export function insetPoint$(
         top = 0,
         bottom = 0,
     } = insets;
-    let invertX = false;
-    let invertY = false;
-    if (options) {
-        invertX = !!options.invertX;
-        invertY = !!options.invertY;
-    }
-    let p = { ...point };
-
+    let {
+        anchor = zeroPoint(),
+        invertX = false,
+        invertY = false,
+    } = options || {};
     if (invertX) {
-        if (right) {
-            p.x = Animated.subtract(p.x, right);
-        }
-    } else {
-        if (left) {
-            p.x = Animated.add(p.x, left);
-        }
+        let save = right;
+        right = left;
+        left = save;
     }
-
     if (invertY) {
-        if (bottom) {
-            p.y = Animated.subtract(p.y, bottom);
-        }
-    } else {
-        if (top) {
-            p.y = Animated.add(p.y, top);
-        }
+        let save = top;
+        top = bottom;
+        bottom = save;
     }
+    return {
+        x: Animated.subtract(
+            Animated.multiply(
+                Animated.subtract(1, anchor.x),
+                left
+            ),
+            Animated.multiply(anchor.x, right),
+        ),
+        y: Animated.subtract(
+            Animated.multiply(
+                Animated.subtract(1, anchor.y),
+                top
+            ),
+            Animated.multiply(anchor.y, bottom),
+        ),
+    };
+}
 
-    return p;
+/**
+ * Offsets a point with insets.
+ * 
+ * The positive direction of y is down.
+ * To reverse this, set invertY to `true`.
+ * 
+ * @param point 
+ * @param insets 
+ * @param options 
+ */
+export function insetPoint$(
+    point: IAnimatedPoint,
+    insets: Partial<IInsets<Animated.Animated>>,
+    options?: {
+        anchor?: IAnimatedPoint;
+        invertX?: boolean;
+        invertY?: boolean;
+    },
+): IAnimatedPoint {
+    let offset = insetTranslation$(insets, options);
+    return {
+        x: Animated.add(point.x, offset.x),
+        y: Animated.add(point.y, offset.y),
+    };
 }
 

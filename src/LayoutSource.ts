@@ -22,6 +22,8 @@ import {
 } from "./types";
 import {
     getLazyArray,
+    insetSize,
+    insetTranslation,
     isPointInsideItemLayout,
     weakref,
     zeroPoint,
@@ -202,8 +204,8 @@ export interface LayoutSourceProps<T> {
      * the it is commited to the item.
      */
     willUseItemViewLayout?: (
+        itemViewLayout: ILayout<IAnimatedPoint>,
         index: T,
-        layout: ILayout<IAnimatedPoint>,
         layoutSource: LayoutSource,
     ) => void;
 
@@ -306,7 +308,11 @@ export default abstract class LayoutSource<
             throw new Error('Invalid root layout');
         }
         this._weakRootRef.set(root);
-    } 
+    }
+
+    get itemOrigin(): IPoint {
+        return { ...this._itemOrigin };
+    }
 
     get itemSize(): IPoint {
         return { ...this._itemSize };
@@ -660,69 +666,51 @@ export default abstract class LayoutSource<
     }
 
     /**
-     * Returns the origin of the layout in view coordinates
-     * based on the sticky edge, if any, otherwise empty.
-     */
-    getStickyContainerLocation(): Partial<IPoint> {
-        if (!this.props.stickyEdge) {
-            return {};
-        }
-        switch (this.props.stickyEdge) {
-            case 'top':
-                return { y: this._insets.top };
-            case 'left':
-                return { x: this._insets.left };
-            default:
-                break;
-        }
-        let size = this.root.containerSize;
-        switch (this.props.stickyEdge) {
-            case 'bottom':
-                return {
-                    y: size.y - this._insets.bottom,
-                };
-            case 'right':
-                return {
-                    x: size.x - this._insets.right,
-                };
-            default:
-                throw new Error('Invalid inset');
-        }
-    }
-
-    /**
      * Returns the animated origin of the layout in view
      * coordinates based on the sticky edge, if any,
      * otherwise empty.
      */
-    getStickyContainerLocation$(): Partial<IAnimatedPoint> {
+    applyStickyContainerLocation$(layout: ILayout<IAnimatedPoint>) {
         if (!this.props.stickyEdge) {
             return {};
         }
+        let scale = this.getScale();
         switch (this.props.stickyEdge) {
             case 'top':
-                return { y: this.insets$.top };
+                layout.offset.y = this.insets$.top;
+                if (scale.y < 0) {
+                    layout.anchor.y = Animated.subtract(1, layout.anchor.y);
+                }
+                return;
             case 'left':
-                return { x: this.insets$.left };
+                layout.offset.x = this.insets$.left;
+                if (scale.x < 0) {
+                    layout.anchor.x = Animated.subtract(1, layout.anchor.x);
+                }
+                return;
             default:
                 break;
         }
-        let size = this.root.containerSize$;
+        let containerSize = this.root.containerSize$;
         switch (this.props.stickyEdge) {
             case 'bottom':
-                return {
-                    y: Animated.subtract(
-                        size.y,
-                        this.insets$.bottom,
-                    )
-                };
+                layout.offset.y = Animated.subtract(
+                    containerSize.y,
+                    this.insets$.bottom,
+                );
+                if (scale.y > 0) {
+                    layout.anchor.y = Animated.subtract(1, layout.anchor.y);
+                }
+                return;
             case 'right':
-                return {
-                    x: Animated.subtract(
-                        size.x,
-                        this.insets$.right,
-                    )
-                };
+                layout.offset.x = Animated.subtract(
+                    containerSize.x,
+                    this.insets$.right,
+                );
+                if (scale.x > 0) {
+                    layout.anchor.x = Animated.subtract(1, layout.anchor.x);
+                }
+                return;
             default:
                 throw new Error('Invalid inset');
         }
@@ -733,29 +721,28 @@ export default abstract class LayoutSource<
      * @param point 
      */
     getContainerLocation(point: IPoint): IPoint {
-        let { x, y } = this.root.getContainerLocation(point, {
+        let p = this.root.getContainerLocation(point, {
             scale: this.scale
         });
-        let p = this.getStickyContainerLocation();
         let scale = this.getScale();
         
-        if (typeof p.x === 'undefined') {
-            if (scale.x > 0) {
-                p.x = x + this._insets.left;
-            } else {
-                p.x = x - this._insets.right;
-            }
-        }
-        p.x = p.x || 0 + this._origin.x * scale.x;
+        // if (typeof p.x === 'undefined') {
+        //     if (scale.x > 0) {
+        //         p.x = x + this._insets.left;
+        //     } else {
+        //         p.x = x - this._insets.right;
+        //     }
+        // }
+        p.x = p.x + this._origin.x * scale.x;
 
-        if (typeof p.y === 'undefined') {
-            if (scale.y > 0) {
-                p.y = y + this._insets.top;
-            } else {
-                p.y = y - this._insets.bottom;
-            }
-        }
-        p.y = p.y || 0 + this._origin.y * scale.y;
+        // if (typeof p.y === 'undefined') {
+        //     if (scale.y > 0) {
+        //         p.y = y + this._insets.top;
+        //     } else {
+        //         p.y = y - this._insets.bottom;
+        //     }
+        // }
+        p.y = p.y + this._origin.y * scale.y;
         return p as IPoint;
     }
 
@@ -765,26 +752,10 @@ export default abstract class LayoutSource<
      * @param point 
      */
     getContainerLocation$(point: IAnimatedPoint | Animated.ValueXY): IAnimatedPoint {
-        let { x, y } = this.root.getContainerLocation$(point, {
+        let scale$ = this.getScale$();
+        let p = this.root.getContainerLocation$(point, {
             scale: this.scale$
         });
-        let p = this.getStickyContainerLocation$();
-        let scale = this.getScale();
-        let scale$ = this.getScale$();
-        
-        if (typeof p.x === 'undefined') {
-            if (scale.x > 0) {
-                p.x = Animated.add(
-                    x,
-                    this.insets$.left,
-                );
-            } else {
-                p.x = Animated.subtract(
-                    x,
-                    this.insets$.right,
-                );
-            }
-        }
         p.x = Animated.add(
             p.x,
             Animated.multiply(
@@ -792,20 +763,6 @@ export default abstract class LayoutSource<
                 scale$.x,
             ),
         );
-
-        if (typeof p.y === 'undefined') {
-            if (scale.y > 0) {
-                p.y = Animated.add(
-                    y,
-                    this.insets$.top,
-                );
-            } else {
-                p.y = Animated.subtract(
-                    y,
-                    this.insets$.bottom,
-                );
-            }
-        }
         p.y = Animated.add(
             p.y,
             Animated.multiply(
@@ -838,25 +795,10 @@ export default abstract class LayoutSource<
      * @param point 
      */
     getLocation(point: IPoint): IPoint {
-        let { x, y } = this.root.getLocation(point);
-        let offset = this.getLocationInsetOffset();
-        return {
-            x: x - this._origin.x + offset.x,
-            y: y - this._origin.y + offset.y,
-        };
-    }
-
-    /**
-     * Returns the amount to offset a location
-     * when converting from view to content
-     * coordinates.
-     */
-    getLocationInsetOffset(): IPoint {
-        let scale = this.getScale();
-        return {
-            x: Math.min(-this._insets.left / scale.x, this._insets.right / scale.x),
-            y: Math.min(-this._insets.top / scale.y, this._insets.bottom / scale.y),
-        };
+        let p = this.root.getLocation(point);
+        p.x -= this._origin.x;
+        p.y -= this._origin.y;
+        return p;
     }
 
     /**
@@ -895,20 +837,20 @@ export default abstract class LayoutSource<
     }
 
     getViewportOffset(): IPoint {
-        let { x, y } = this._maybeRoot?.viewOffset || zeroPoint();
-        let scale = this.getScale();
+        let offset = this._maybeRoot?.viewOffset || zeroPoint();
+        let insetOffset = insetTranslation(
+            this._insets,
+            { anchor: this._itemOrigin },
+        );
         return {
-            x: x + (scale.x > 0 ? -this._insets.left : 0),
-            y: y + (scale.y > 0 ? -this._insets.top : 0),
+            x: offset.x - insetOffset.x,
+            y: offset.y - insetOffset.y,
         };
     }
     
     getViewportSize(): IPoint {
-        let { x, y } = this._maybeRoot?.containerSize || zeroPoint();
-        return {
-            x: x - this._insets.left - this._insets.right,
-            y: y - this._insets.top - this._insets.bottom,
-        };
+        let size = this._maybeRoot?.containerSize || zeroPoint();
+        return insetSize(size, this._insets);
     }
 
     abstract getItemContentLayout(index: T): IItemLayout;
@@ -917,14 +859,15 @@ export default abstract class LayoutSource<
         return this.props.getItemViewLayout?.(index, this);
     }
 
-    willUseItemViewLayout(index: T, layout: ILayout<IAnimatedPoint>): void {
-        return this.props.willUseItemViewLayout?.(index, layout, this);
+    willUseItemViewLayout(itemViewLayout: ILayout<IAnimatedPoint>, index: T): void {
+        return this.props.willUseItemViewLayout?.(itemViewLayout, index, this);
     }
 
     createItemContentLayout$(): ILayout<MutableAnimatedPoint> {
         return {
             offset: new Animated.ValueXY(),
             size: new Animated.ValueXY(),
+            anchor: new Animated.ValueXY(),
         };
     }
 
@@ -962,25 +905,21 @@ export default abstract class LayoutSource<
             };
         }
 
-        let layout: ILayout<IAnimatedPoint> = { offset, size };
-
-        // Apply offsets
-        let itemOrigin$: IAnimatedPoint = { ...this.itemOrigin$ };
+        let anchor: IAnimatedPoint = { ...this.itemOrigin$ };
         if (scale.x < 0) {
-            // Invert origin
-            itemOrigin$.x = Animated.subtract(1, itemOrigin$.x);
+            anchor.x = Animated.subtract(1, anchor.x);
         }
         if (scale.y < 0) {
-            // Invert origin
-            itemOrigin$.y = Animated.subtract(1, itemOrigin$.y);
+            anchor.y = Animated.subtract(1, anchor.y);
         }
 
-        let originOffset = {
-            x: Animated.multiply(itemOrigin$.x, layout.size.x),
-            y: Animated.multiply(itemOrigin$.y, layout.size.y),
+        let layout: ILayout<IAnimatedPoint> = {
+            offset,
+            size,
+            anchor,
         };
-        layout.offset.x = Animated.subtract(layout.offset.x, originOffset.x);
-        layout.offset.y = Animated.subtract(layout.offset.y, originOffset.y);
+
+        this.applyStickyContainerLocation$(layout);
 
         return layout;
     }
@@ -1067,7 +1006,7 @@ export default abstract class LayoutSource<
             contentLayout,
             overrides
         );
-        this.willUseItemViewLayout(index, viewLayout);
+        this.willUseItemViewLayout(viewLayout, index);
         
         let root = this.root;
         let item: IItem<T> = {
