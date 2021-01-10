@@ -33,11 +33,7 @@ const ScrollLock = React.memo(({ locked: lockedValue }: ScrollLockProps) => {
         let handle = '';
         if (RemoveScroll) {
             handle = lockedValue.addListener(({ value }) => {
-                let x = !!value;
-                if (x === locked) {
-                    return;
-                }
-                setLocked(x);
+                setLocked(!!value);
             });
         }
         return () => {
