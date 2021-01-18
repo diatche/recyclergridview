@@ -36,7 +36,7 @@
     "performance"
   ],
   "author": "Pavel Diatchenko <diatche@gmail.com>",
-  "license": "Apache-2.0",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/diatche/evergrid/issues"
   },
