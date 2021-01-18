@@ -46,6 +46,11 @@
     "react-native": ">=0.62.0 <1.0.0",
     "react-remove-scroll": "2.x"
   },
+  "peerDependenciesMeta": {
+    "react-remove-scroll": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@rollup/plugin-alias": "^3.1.1",
     "@rollup/plugin-node-resolve": "^9.0.0",
