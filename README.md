@@ -4,3 +4,7 @@ A cross-platform infinite 2D scrollable view with efficient cell recycling using
 For an overview see the [demo](https://github.com/diatche/evergrid-expo-demo).
 
 Documentation coming soon.
+
+### Usage
+
+If using inside a `ScrollView`, set `canCancelContentTouches={false}`.
