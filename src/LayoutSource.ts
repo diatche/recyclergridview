@@ -76,9 +76,10 @@ export interface IItemUpdateManyOptions extends IAnimationBaseOptions {
     forceRender?: boolean;
 }
 
-export interface IItemUpdateSingleOptions extends IAnimationBaseOptions {
+export interface IItemUpdateSingleOptions<T> extends IAnimationBaseOptions {
     created?: boolean;
     dequeued?: boolean;
+    previous?: IItemSnapshot<T>;
 }
 
 export interface IItemRenderOptions {
@@ -180,6 +181,7 @@ export interface LayoutSourceProps<T> {
     shouldRenderItem: (
         item: IItem<T>,
         previous: IItemSnapshot<T>,
+        layoutSource: LayoutSource,
     ) => boolean;
 
     /**
@@ -218,7 +220,7 @@ export interface LayoutSourceProps<T> {
      * Called before an item is displayed after
      * an update or creation.
      */
-    willShowItem?: (item: IItem<T>) => void;
+    willShowItem?: (item: IItem<T>, options: IItemUpdateSingleOptions<T>) => void;
 
     /**
      * Called before an item is hidden after
@@ -1043,8 +1045,12 @@ export default abstract class LayoutSource<
     updateItem(
         item: IItem<T>,
         index: T,
-        options?: IItemUpdateSingleOptions,
+        options?: IItemUpdateSingleOptions<T>,
     ): Animated.CompositeAnimation | undefined {
+        const itemSnapshot: IItemSnapshot<T> = {
+            index: item.index,
+            contentLayout: item.contentLayout,
+        }
         let previousContentLayout = item.contentLayout;
         let newContentLayout = this.getItemContentLayout(index);
         // if (newContentLayout.size.x <= 0 || newContentLayout.size.y <= 0) {
@@ -1135,7 +1141,10 @@ export default abstract class LayoutSource<
             item.animated.opacity.setValue(1);
         }
 
-        this.props.willShowItem?.(item);
+        this.props.willShowItem?.(item, {
+            ...options,
+            previous: itemSnapshot,
+        });
         this.setVisibleItem(index, item);
 
         if (animations.length !== 0) {
@@ -1341,7 +1350,7 @@ export default abstract class LayoutSource<
         if (!itemNode) {
             return;
         }
-        if (options?.force || this.props.shouldRenderItem(item, previous)) {
+        if (options?.force || this.props.shouldRenderItem(item, previous, this)) {
             // Update existing rendered node
             itemNode.setNeedsRender();
         }
