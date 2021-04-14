@@ -181,6 +181,7 @@ export interface LayoutSourceProps<T> {
     shouldRenderItem: (
         item: IItem<T>,
         previous: IItemSnapshot<T>,
+        layoutSource: LayoutSource,
     ) => boolean;
 
     /**
@@ -1349,7 +1350,7 @@ export default abstract class LayoutSource<
         if (!itemNode) {
             return;
         }
-        if (options?.force || this.props.shouldRenderItem(item, previous)) {
+        if (options?.force || this.props.shouldRenderItem(item, previous, this)) {
             // Update existing rendered node
             itemNode.setNeedsRender();
         }
