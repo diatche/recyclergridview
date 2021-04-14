@@ -1,8 +1,12 @@
 # Change Log
 
-## develop
+## master
 
-Changes on the `develop` branch, but not yet released, will be listed here.
+Changes on the `master` branch, but not yet released, will be listed here.
+
+## 0.1.0
+
+**15 Apr 2021**
 
 ### Features
 
