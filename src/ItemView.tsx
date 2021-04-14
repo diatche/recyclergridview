@@ -1,9 +1,6 @@
 import React from 'react';
 import { Animated, ViewProps, StyleSheet } from 'react-native';
-import {
-    LayoutSource,
-    negate$,
-} from './internal';
+import { LayoutSource, negate$ } from './internal';
 import { IItem } from './types';
 
 export interface ItemViewProps extends ViewProps {
@@ -89,16 +86,16 @@ export default class ItemView extends React.Component<
                     styles.container,
                     {
                         transform: [
-                            { 
+                            {
                                 translateX: Animated.multiply(
                                     item.animated.viewLayout.anchor.x,
-                                    negate$(item.animated.viewLayout.size.x),
+                                    negate$(item.animated.viewLayout.size.x)
                                 ),
                             },
-                            { 
+                            {
                                 translateY: Animated.multiply(
                                     item.animated.viewLayout.anchor.y,
-                                    negate$(item.animated.viewLayout.size.y),
+                                    negate$(item.animated.viewLayout.size.y)
                                 ),
                             },
                             { translateX: item.animated.viewLayout.offset.x },
@@ -121,5 +118,5 @@ export default class ItemView extends React.Component<
 const styles = StyleSheet.create({
     container: {
         alignItems: 'stretch',
-    }
+    },
 });

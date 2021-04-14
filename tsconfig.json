@@ -1,27 +1,22 @@
 {
-  "compilerOptions": {
-    "lib": ["es6", "dom"], // target Node.js(v6)
-    // "types": ["react", "react-native"],
-    "module": "ESNext",
-    "target": "es5", // target Node.js(v6)
-    "moduleResolution": "node", // target Node.js(v6)
-    "declaration": true, // generate TypeScript definitions
-    // "declarationDir": "dist",
-    "rootDir": "src",
-    "strict": true,
-    "noImplicitReturns": true,
-    "removeComments": false,
-    "jsx": "react",
-    "sourceMap": true,
-    "skipLibCheck": true,
-    "downlevelIteration": true,
-    "allowSyntheticDefaultImports": true
-  },
-  "include": [
-    "src/**/*"
-  ],
-  "exclude": [
-    "tests",
-    "examples"
-  ]
+    "compilerOptions": {
+        "lib": ["es6", "dom"], // target Node.js(v6)
+        // "types": ["react", "react-native"],
+        "module": "ESNext",
+        "target": "es5", // target Node.js(v6)
+        "moduleResolution": "node", // target Node.js(v6)
+        "declaration": true, // generate TypeScript definitions
+        // "declarationDir": "dist",
+        "rootDir": "src",
+        "strict": true,
+        "noImplicitReturns": true,
+        "removeComments": false,
+        "jsx": "react",
+        "sourceMap": true,
+        "skipLibCheck": true,
+        "downlevelIteration": true,
+        "allowSyntheticDefaultImports": true
+    },
+    "include": ["src/**/*"],
+    "exclude": ["tests", "examples"]
 }

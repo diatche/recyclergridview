@@ -3,28 +3,27 @@ import {
     LayoutSource,
     LayoutSourceProps,
     Evergrid as Grid,
-} from "./internal";
-import {
-    IItem,
-    IItemUpdate,
-    IPoint,
-} from "./types";
+} from './internal';
+import { IItem, IItemUpdate, IPoint } from './types';
 import {
     emptyPointRange,
     forEachInstertedPointInRange,
     isPointRangeEqual,
-} from "./util";
+} from './util';
 
 declare type T = IPoint;
 
 export interface GridLayoutSourceProps extends LayoutSourceProps<T> {
     onVisibleRangeChange?: (
         visibleRange: [T, T],
-        layoutSource: LayoutSource,
+        layoutSource: LayoutSource
     ) => void;
 }
 
-export default class GridLayoutSource extends LayoutSource<IPoint, GridLayoutSourceProps> {
+export default class GridLayoutSource extends LayoutSource<
+    IPoint,
+    GridLayoutSourceProps
+> {
     visibleItems: { [xy: string]: IItem<T> };
     visibleRange: [T, T];
     pendingVisibleRange?: [T, T];
@@ -51,7 +50,7 @@ export default class GridLayoutSource extends LayoutSource<IPoint, GridLayoutSou
     }
 
     getVisibleItem(index: T): IItem<T> | undefined {
-       return this.visibleItems[this.encodeIndex(index)];
+        return this.visibleItems[this.encodeIndex(index)];
     }
 
     setVisibleItem(index: T, item: IItem<T> | undefined) {
@@ -63,7 +62,7 @@ export default class GridLayoutSource extends LayoutSource<IPoint, GridLayoutSou
         }
     }
 
-    * itemUpdates(): Generator<IItemUpdate<T>> {
+    *itemUpdates(): Generator<IItemUpdate<T>> {
         let pendingVisibleRange = this.pendingVisibleRange;
         if (!pendingVisibleRange) {
             return;
@@ -71,7 +70,7 @@ export default class GridLayoutSource extends LayoutSource<IPoint, GridLayoutSou
         // Hidden items
         let it = forEachInstertedPointInRange(
             pendingVisibleRange,
-            this.visibleRange,
+            this.visibleRange
         );
         for (let i of it) {
             yield { remove: i };
@@ -80,14 +79,14 @@ export default class GridLayoutSource extends LayoutSource<IPoint, GridLayoutSou
         // Shown items
         it = forEachInstertedPointInRange(
             this.visibleRange,
-            pendingVisibleRange,
+            pendingVisibleRange
         );
         for (let i of it) {
             yield { add: i };
         }
     }
 
-    * visibleIndexes(): Generator<T> {
+    *visibleIndexes(): Generator<T> {
         let [p0, pN] = this.pendingVisibleRange || this.visibleRange;
         for (let x = p0.x; x < pN.x; x++) {
             for (let y = p0.y; y < pN.y; y++) {
@@ -111,10 +110,7 @@ export default class GridLayoutSource extends LayoutSource<IPoint, GridLayoutSou
 
     shouldUpdate() {
         let pendingVisibleRange = this.getVisibleGridIndexRange();
-        return !isPointRangeEqual(
-            pendingVisibleRange,
-            this.visibleRange
-        );
+        return !isPointRangeEqual(pendingVisibleRange, this.visibleRange);
     }
 
     didBeginUpdate() {

@@ -1,10 +1,10 @@
-import React from "react";
-import { 
+import React from 'react';
+import {
     Animated,
     GestureResponderEvent,
     PanResponderGestureState,
 } from 'react-native';
-import { ItemView } from "./internal";
+import { ItemView } from './internal';
 
 export interface IPoint {
     x: number;
@@ -35,14 +35,19 @@ export interface IAnimatedItemLayout {
 }
 
 export type AnimatedValueInput = number | Animated.Value;
-export type AnimatedValueDerivedInput<Info> = AnimatedValueInput | ((info: Info) => AnimatedValueInput);
+export type AnimatedValueDerivedInput<Info> =
+    | AnimatedValueInput
+    | ((info: Info) => AnimatedValueInput);
 
 export interface IAnimatedValueXYInput {
     x: AnimatedValueInput;
     y: AnimatedValueInput;
 }
 
-export type AnimatedValueXYDerivedInput<Info> = Partial<IAnimatedValueXYInput> | Animated.ValueXY | ((info: Info) => Partial<IAnimatedValueXYInput> | Animated.ValueXY);
+export type AnimatedValueXYDerivedInput<Info> =
+    | Partial<IAnimatedValueXYInput>
+    | Animated.ValueXY
+    | ((info: Info) => Partial<IAnimatedValueXYInput> | Animated.ValueXY);
 
 export interface IAnimatedPoint {
     x: Animated.Value | Animated.AnimatedInterpolation;
@@ -54,10 +59,12 @@ export interface IAnimatedPointInput {
     y: string | number | Animated.Value | Animated.AnimatedInterpolation;
 }
 
-export type MutableAnimatedPoint = Animated.ValueXY | {
-    x: Animated.Value;
-    y: Animated.Value;
-};
+export type MutableAnimatedPoint =
+    | Animated.ValueXY
+    | {
+          x: Animated.Value;
+          y: Animated.Value;
+      };
 
 export interface IItemUpdate<T> {
     add?: T;
@@ -78,7 +85,7 @@ export interface IItem<T> {
     /**
      * Setting the z-index here will override
      * the layout source's setting for this item.
-     * 
+     *
      * See also [LayoutSourceProps]{@link LayoutSourceProps#zIndex}.
      */
     zIndex?: number;
@@ -94,19 +101,20 @@ export interface IItem<T> {
      * If `true`, will render this item without
      * calling delegate methods when the item
      * is dequeued.
-     * 
+     *
      * Also see {@link IItemUpdateManyOptions}
      */
     forceRenderOnDequeue: boolean;
 }
 
-export interface IItemSnapshot<T> extends Pick<IItem<T>, 'index' | 'contentLayout'> {};
+export interface IItemSnapshot<T>
+    extends Pick<IItem<T>, 'index' | 'contentLayout'> {}
 
-export interface IInsets<T=number> {
-    top: T,
-    right: T,
-    bottom: T,
-    left: T,
+export interface IInsets<T = number> {
+    top: T;
+    right: T;
+    bottom: T;
+    left: T;
 }
 
 export type InsetEdge = keyof IInsets;
@@ -115,7 +123,7 @@ export type InsetEdge = keyof IInsets;
  * Base animation options.
  */
 export interface IAnimationBaseOptions {
-    /** 
+    /**
      * Set to `false` to disable the animation.
      **/
     animated?: boolean;
@@ -134,7 +142,7 @@ export interface IAnimationBaseOptions {
     /**
      * Spring animation options. Setting this to a truthy
      * value configures a spring animation.
-     * 
+     *
      * If both a `spring` and `timing` optionsa re truthy,
      * `spring` takes precedence.
      */
@@ -143,7 +151,7 @@ export interface IAnimationBaseOptions {
     /**
      * Timing animation options. Setting this to a truthy
      * value configures a timing animation.
-     * 
+     *
      * If both a `spring` and `timing` optionsa re truthy,
      * `spring` takes precedence.
      */
@@ -154,22 +162,42 @@ export interface PanPressableCallbacks {
     /**
      * Called when a single tap gesture is detected.
      */
-    onPress?: null | ((event: GestureResponderEvent, gestureState: PanResponderGestureState) => void);
+    onPress?:
+        | null
+        | ((
+              event: GestureResponderEvent,
+              gestureState: PanResponderGestureState
+          ) => void);
 
     /**
      * Called when a touch is engaged before `onPress`.
      */
-    onPressIn?: null | ((event: GestureResponderEvent, gestureState: PanResponderGestureState) => void);
+    onPressIn?:
+        | null
+        | ((
+              event: GestureResponderEvent,
+              gestureState: PanResponderGestureState
+          ) => void);
 
     /**
      * Called when a touch is released before `onPress`.
      */
-    onPressOut?: null | ((event: GestureResponderEvent, gestureState: PanResponderGestureState) => void);
+    onPressOut?:
+        | null
+        | ((
+              event: GestureResponderEvent,
+              gestureState: PanResponderGestureState
+          ) => void);
 
     /**
      * Called when a long-tap gesture is detected.
      */
-    onLongPress?: null | ((event: GestureResponderEvent, gestureState: PanResponderGestureState) => void);
+    onLongPress?:
+        | null
+        | ((
+              event: GestureResponderEvent,
+              gestureState: PanResponderGestureState
+          ) => void);
 }
 
 export interface PanPressableOptions {

@@ -1,32 +1,26 @@
-import {
-    IItemLayout,
-    LayoutSource,
-    LayoutSourceProps,
-} from "./internal";
-import {
-    IAnimationBaseOptions,
-    IItem,
-    IItemUpdate,
-    IPoint,
-} from "./types";
+import { IItemLayout, LayoutSource, LayoutSourceProps } from './internal';
+import { IAnimationBaseOptions, IItem, IItemUpdate, IPoint } from './types';
 import {
     emptyRange,
     forEachInstertedIndexInRange,
     isRangeEqual,
     zeroPoint,
-} from "./util";
+} from './util';
 
 declare type T = number;
 
 export interface FlatLayoutSourceProps extends LayoutSourceProps<T> {
     onVisibleRangeChange?: (
         visibleRange: [T, T],
-        layoutSource: LayoutSource,
+        layoutSource: LayoutSource
     ) => void;
     horizontal?: boolean;
 }
 
-export default class FlatLayoutSource extends LayoutSource<T, FlatLayoutSourceProps> {
+export default class FlatLayoutSource extends LayoutSource<
+    T,
+    FlatLayoutSourceProps
+> {
     horizontal: boolean;
     visibleItems: { [i: number]: IItem<T> };
     visibleRange: [T, T];
@@ -51,7 +45,7 @@ export default class FlatLayoutSource extends LayoutSource<T, FlatLayoutSourcePr
     }
 
     getVisibleItem(index: T): IItem<T> | undefined {
-       return this.visibleItems[index];
+        return this.visibleItems[index];
     }
 
     setVisibleItem(index: T, item: IItem<T> | undefined) {
@@ -62,7 +56,7 @@ export default class FlatLayoutSource extends LayoutSource<T, FlatLayoutSourcePr
         }
     }
 
-    * itemUpdates(): Generator<IItemUpdate<T>> {
+    *itemUpdates(): Generator<IItemUpdate<T>> {
         let pendingVisibleRange = this.pendingVisibleRange;
         if (!pendingVisibleRange) {
             return;
@@ -70,7 +64,7 @@ export default class FlatLayoutSource extends LayoutSource<T, FlatLayoutSourcePr
         // Hidden items
         let it = forEachInstertedIndexInRange(
             pendingVisibleRange,
-            this.visibleRange,
+            this.visibleRange
         );
         for (let i of it) {
             yield { remove: i };
@@ -79,30 +73,27 @@ export default class FlatLayoutSource extends LayoutSource<T, FlatLayoutSourcePr
         // Shown items
         it = forEachInstertedIndexInRange(
             this.visibleRange,
-            pendingVisibleRange,
+            pendingVisibleRange
         );
         for (let i of it) {
             yield { add: i };
         }
     }
 
-    * visibleIndexes(): Generator<T> {
+    *visibleIndexes(): Generator<T> {
         let [i0, iN] = this.pendingVisibleRange || this.visibleRange;
         for (let i = i0; i < iN; i++) {
             yield i;
         }
     }
-    
-    getVisibleItemAtLocation(p: IPoint, ): IItem<T> | undefined {
+
+    getVisibleItemAtLocation(p: IPoint): IItem<T> | undefined {
         let i = this.getGridIndex(p, { floor: true });
         let axis: keyof IPoint = this.horizontal ? 'x' : 'y';
         return this.getVisibleItem(i[axis]);
     }
 
-    willAddItem(
-        item: IItem<T>,
-        options?: IAnimationBaseOptions
-    ) {
+    willAddItem(item: IItem<T>, options?: IAnimationBaseOptions) {
         // Shift indexes of visible items
         let visibleRange = this.pendingVisibleRange || this.visibleRange;
         for (let i = visibleRange[1] - 1; i >= item.index; i--) {
@@ -117,10 +108,7 @@ export default class FlatLayoutSource extends LayoutSource<T, FlatLayoutSourcePr
         this.visibleRange[1] += 1;
     }
 
-    didRemoveItem(
-        { index }: { index: T },
-        options?: IAnimationBaseOptions
-    ) {
+    didRemoveItem({ index }: { index: T }, options?: IAnimationBaseOptions) {
         // Shift indexes of visible items
         let visibleRange = this.pendingVisibleRange || this.visibleRange;
         if (visibleRange[1] <= visibleRange[0]) {
@@ -141,10 +129,7 @@ export default class FlatLayoutSource extends LayoutSource<T, FlatLayoutSourcePr
 
     shouldUpdate() {
         let pendingVisibleRange = this.getVisibleRange();
-        return !isRangeEqual(
-            pendingVisibleRange,
-            this.visibleRange
-        );
+        return !isRangeEqual(pendingVisibleRange, this.visibleRange);
     }
 
     didBeginUpdate() {

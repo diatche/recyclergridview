@@ -1,22 +1,22 @@
-import React from "react";
-import {
-    Animated,
-    View,
-    ViewProps,
-} from "react-native";
-import ItemView from "./ItemView";
-import { EvergridLayout, LayoutSource } from "./internal";
-import {
-    IItem,
-} from "./types";
-import ScrollLock from "./ScrollLock";
+import React from 'react';
+import { Animated, View, ViewProps } from 'react-native';
+import ItemView from './ItemView';
+import { EvergridLayout, LayoutSource } from './internal';
+import { IItem } from './types';
+import ScrollLock from './ScrollLock';
 
-export type ItemRenderCallback<T = any, C = any> = (item: IItem<T>, layoutSource: LayoutSource<T>, context: C) => React.ReactNode;
+export type ItemRenderCallback<T = any, C = any> = (
+    item: IItem<T>,
+    layoutSource: LayoutSource<T>,
+    context: C
+) => React.ReactNode;
 export interface ItemRenderInfo<T = any, C = any> {
     renderItem: ItemRenderCallback<T, C>;
     context: C;
-};
-export type ItemRenderMapInput = { [layoutSourceID: string]: ItemRenderInfo | ItemRenderCallback } | ItemRenderCallback;
+}
+export type ItemRenderMapInput =
+    | { [layoutSourceID: string]: ItemRenderInfo | ItemRenderCallback }
+    | ItemRenderCallback;
 export type ItemRenderMap = { [layoutSourceID: string]: ItemRenderInfo };
 
 export interface EvergridProps extends Animated.AnimatedProps<ViewProps> {
@@ -51,8 +51,11 @@ export default class Evergrid extends React.PureComponent<
         this.state = {
             renderNonce: 0,
         };
-        
-        if (!this.props.layout || !(this.props.layout instanceof EvergridLayout)) {
+
+        if (
+            !this.props.layout ||
+            !(this.props.layout instanceof EvergridLayout)
+        ) {
             throw new Error('Must specify valid layout');
         }
 
@@ -98,7 +101,9 @@ export default class Evergrid extends React.PureComponent<
                 }
             }
             if (typeof renderItem !== 'function') {
-                throw new Error(`Must specify a valid render method for layout source "${layoutSource.id}"`);
+                throw new Error(
+                    `Must specify a valid render method for layout source "${layoutSource.id}"`
+                );
             }
             itemRenderMap[layoutSource.id] = { renderItem, context };
         }
@@ -165,10 +170,12 @@ export default class Evergrid extends React.PureComponent<
         let itemViews: React.ReactNode[] = [];
         if (!this._needsFirstRender) {
             for (let layoutSource of this.props.layout.layoutSources) {
-                itemViews = itemViews.concat(this._renderLayoutSource(layoutSource));
+                itemViews = itemViews.concat(
+                    this._renderLayoutSource(layoutSource)
+                );
             }
         } // Else: wait for first empty render to get layout.
-        
+
         this._needsFirstRender = false;
         this._needsRender = false;
         this.cancelScheduledRender();
@@ -183,7 +190,7 @@ export default class Evergrid extends React.PureComponent<
                 style={[
                     this.props.style,
                     {
-                        overflow: "hidden",
+                        overflow: 'hidden',
                     },
                 ]}
                 // onLayout={Animated.event(
@@ -202,19 +209,23 @@ export default class Evergrid extends React.PureComponent<
                 // )}
                 onLayout={(event: any) => {
                     Animated.event(
-                        [{
-                            nativeEvent: {
-                                layout: {
-                                    x: this.props.layout.containerOffset$.x,
-                                    y: this.props.layout.containerOffset$.y,
-                                    width: this.props.layout.containerSize$.x,
-                                    height: this.props.layout.containerSize$.y,
-                                }
-                            }
-                        }],
+                        [
+                            {
+                                nativeEvent: {
+                                    layout: {
+                                        x: this.props.layout.containerOffset$.x,
+                                        y: this.props.layout.containerOffset$.y,
+                                        width: this.props.layout.containerSize$
+                                            .x,
+                                        height: this.props.layout.containerSize$
+                                            .y,
+                                    },
+                                },
+                            },
+                        ],
                         {
                             // listener: event => {},
-                            useNativeDriver: this.props.layout.useNativeDriver
+                            useNativeDriver: this.props.layout.useNativeDriver,
                         }
                     )(event);
                     this.props.onLayout?.(event);
@@ -230,7 +241,9 @@ export default class Evergrid extends React.PureComponent<
         return React.createRef<ItemView>();
     }
 
-    private _renderLayoutSource<T>(layoutSource: LayoutSource<T>): React.ReactNode[] {
+    private _renderLayoutSource<T>(
+        layoutSource: LayoutSource<T>
+    ): React.ReactNode[] {
         // console.debug(`[${layoutSource.id}] begin render`);
         let items: React.ReactNode[] = [];
 
@@ -240,12 +253,14 @@ export default class Evergrid extends React.PureComponent<
                 let item = layoutSource.getVisibleItem(index);
                 if (!item) {
                     // We cannot dequeue a item as it would trigger a `findDOMNode` event inside `render()`.
-                    console.warn(`Creating item in render method. This should have been done in UNSAFE_componentWillUpdate(). Layout source: ${layoutSource.id}`);
+                    console.warn(
+                        `Creating item in render method. This should have been done in UNSAFE_componentWillUpdate(). Layout source: ${layoutSource.id}`
+                    );
                     item = layoutSource.createItem(index);
                 }
                 items.push(this._renderItem(item, layoutSource));
             }
-            
+
             // Render queued items to keep them from being unmounted
             for (let item of layoutSource.flatQueuedItems()) {
                 if (item.ref.current) {
@@ -261,10 +276,15 @@ export default class Evergrid extends React.PureComponent<
         return items;
     }
 
-    private _renderItem<T>(item: IItem<T>, layoutSource: LayoutSource<T>): React.ReactNode {
+    private _renderItem<T>(
+        item: IItem<T>,
+        layoutSource: LayoutSource<T>
+    ): React.ReactNode {
         let renderer = this.itemRenderMap[layoutSource.id];
         if (!renderer) {
-            throw new Error(`Must specify a valid render method for layout source "${layoutSource.id}"`);
+            throw new Error(
+                `Must specify a valid render method for layout source "${layoutSource.id}"`
+            );
         }
         // let viewKey = item.viewKey;
         // if (!viewKey) {
@@ -278,7 +298,9 @@ export default class Evergrid extends React.PureComponent<
                 key={item.viewKey}
                 item={item}
                 layoutSource={layoutSource}
-                renderItem={() => renderer.renderItem(item, layoutSource, renderer.context)}
+                renderItem={() =>
+                    renderer.renderItem(item, layoutSource, renderer.context)
+                }
                 useNativeDriver={this.props.layout.useNativeDriver}
             />
         );

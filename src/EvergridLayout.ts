@@ -1,4 +1,4 @@
-import React from "react";
+import React from 'react';
 import {
     Animated,
     AppState,
@@ -9,14 +9,14 @@ import {
     PanResponderCallbacks,
     PanResponderGestureState,
     PanResponderInstance,
-} from "react-native";
+} from 'react-native';
 import {
     Evergrid,
     ItemView,
     kPanPressableCallbackKeys,
     kPanResponderCallbackKeys,
     LayoutSource,
-} from "./internal";
+} from './internal';
 import {
     AnimatedValueXYDerivedInput,
     IAnimatedPoint,
@@ -25,14 +25,14 @@ import {
     PanPressableOptions,
     PanPressableCallbacks,
     IInsets,
-} from "./types";
+} from './types';
 import {
     insetPoint,
     insetSize,
     insetTranslation,
     weakref,
     zeroPoint,
-} from "./util";
+} from './util';
 import {
     concatFunctions,
     insetSize$,
@@ -40,7 +40,7 @@ import {
     normalizeAnimatedDerivedValueXY,
     removeDefaultCurry,
     safeFunction,
-} from "./rnUtil";
+} from './rnUtil';
 
 const kPanSpeedMin = 0.001;
 
@@ -66,13 +66,13 @@ export const kEvergridLayoutCallbackKeys: (keyof EvergridLayoutCallbacks)[] = [
 
 export interface IScrollInfo {
     /** Content location in content coordinates. */
-    location: IPoint,
+    location: IPoint;
     /** Content velocity in content coordinates. */
-    velocity: IPoint,
+    velocity: IPoint;
     /** Viewport location in view coordinates (pixels). */
-    offset: IPoint,
+    offset: IPoint;
     /** Viewport velocity in view coordinates (pixels). */
-    scaledVelocity: IPoint,
+    scaledVelocity: IPoint;
 }
 
 export interface IScrollToOffsetOptions {
@@ -91,7 +91,9 @@ export interface IUpdateInfo {
 /**
  * Note that values returned by pan responder callbacks are ignored.
  **/
-export interface EvergridLayoutCallbacks extends PanPressableCallbacks, PanResponderCallbacks {
+export interface EvergridLayoutCallbacks
+    extends PanPressableCallbacks,
+        PanResponderCallbacks {
     snapToLocation?: (info: IScrollInfo) => Partial<IPoint> | undefined;
     onViewportSizeChanged?: (collection: EvergridLayout) => void;
     /**
@@ -112,7 +114,7 @@ interface EvergridLayoutPrimitiveProps extends PanPressableOptions {
     /**
      * The first z-index to use when adding layout sources.
      * Defaults to 10.
-     * 
+     *
      * If a layout source [defines their own]{@link LayoutSourceProps#zIndex}
      * non-zero z-index, this will not override it.
      */
@@ -120,20 +122,20 @@ interface EvergridLayoutPrimitiveProps extends PanPressableOptions {
     /**
      * The distance between z-indexes in layout sources.
      * Defaults to 10.
-     * 
+     *
      * If a layout source [defines their own]{@link LayoutSourceProps#zIndex}
      * non-zero z-index, this will not override it.
      */
     zIndexStride?: number;
     /**
      * **Not Supported**
-     * 
+     *
      * ~~When `true`, enables performing animations on native side
      * without going through the javascript bridge on every frame.~~
      * Falls back to javascript animation when not supported.
      * See [React Native Documentation](https://reactnative.dev/docs/animated#using-the-native-driver)
      * for more info.
-     * 
+     *
      * Defaults to `false`.
      **/
     useNativeDriver?: boolean;
@@ -151,7 +153,7 @@ export interface EvergridLayoutProps extends EvergridLayoutPrimitiveProps {
      * The point with values in the range 0-1.
      * The point represents the origin in the viewport.
      * Scaling also happens about this point.
-     * 
+     *
      * Defaults to `{ x: 0.5, y: 0.5 }`, i.e. the
      * center of the viewport.
      **/
@@ -170,7 +172,7 @@ export interface EvergridLayoutProps extends EvergridLayoutPrimitiveProps {
     /**
      * The first z-index to use when adding layout sources.
      * Defaults to 10.
-     * 
+     *
      * If a layout source [defines their own]{@link LayoutSourceProps#zIndex}
      * non-zero z-index, this will not override it.
      */
@@ -178,20 +180,20 @@ export interface EvergridLayoutProps extends EvergridLayoutPrimitiveProps {
     /**
      * The distance between z-indexes in layout sources.
      * Defaults to 10.
-     * 
+     *
      * If a layout source [defines their own]{@link LayoutSourceProps#zIndex}
      * non-zero z-index, this will not override it.
      */
     zIndexStride?: number;
     /**
      * **Not Supported**
-     * 
+     *
      * ~~When `true`, enables performing animations on native side
      * without going through the javascript bridge on every frame.~~
      * Falls back to javascript animation when not supported.
      * See [React Native Documentation](https://reactnative.dev/docs/animated#using-the-native-driver)
      * for more info.
-     * 
+     *
      * Defaults to `false`.
      **/
     useNativeDriver?: boolean;
@@ -220,13 +222,13 @@ export default class EvergridLayout {
      * The point with values in the range 0-1.
      * The point represents the origin in the viewport.
      * Scaling also happens about this point.
-     * 
+     *
      * Defaults to `{ x: 0.5, y: 0.5 }`, i.e. the
      * center of the viewport.
      **/
     readonly anchor$: Animated.ValueXY;
     readonly panResponder?: PanResponderInstance;
-    
+
     private _weakViewRef = weakref<Evergrid>();
 
     private _locationOffsetBase$: Animated.ValueXY;
@@ -249,7 +251,9 @@ export default class EvergridLayout {
     private _hasContainerSize = false;
     private _containerOffset: IPoint;
     private _itemViewCounter = 0;
-    private _animatedSubscriptions: { [id: string]: Animated.Value | Animated.ValueXY } = {};
+    private _animatedSubscriptions: {
+        [id: string]: Animated.Value | Animated.ValueXY;
+    } = {};
     private _memoryWarningListener?: () => void;
     private _interactionHandle = 0;
     private _updateDepth = 0;
@@ -284,7 +288,9 @@ export default class EvergridLayout {
 
         this.useNativeDriver = useNativeDriver || kDefaultProps.useNativeDriver;
         if (this.useNativeDriver) {
-            throw new Error('Using native driver is not supported due to limitations with animating layout props.');
+            throw new Error(
+                'Using native driver is not supported due to limitations with animating layout props.'
+            );
         }
 
         this.longPressMaxDistance = longPressMaxDistance;
@@ -310,7 +316,10 @@ export default class EvergridLayout {
                 // console.debug('Ignoring invalid containerSize value: ' + JSON.stringify(p));
                 return;
             }
-            if (Math.abs(p.x - this._containerSize.x) < 1 && Math.abs(p.y - this._containerSize.y) < 1) {
+            if (
+                Math.abs(p.x - this._containerSize.x) < 1 &&
+                Math.abs(p.y - this._containerSize.y) < 1
+            ) {
                 return;
             }
             this._containerSize = p;
@@ -321,7 +330,10 @@ export default class EvergridLayout {
         this._containerOffset = zeroPoint();
         this.containerOffset$ = new Animated.ValueXY();
         sub = this.containerOffset$.addListener(p => {
-            if (Math.abs(p.x - this._containerOffset.x) < 1 && Math.abs(p.y - this._containerOffset.y) < 1) {
+            if (
+                Math.abs(p.x - this._containerOffset.x) < 1 &&
+                Math.abs(p.y - this._containerOffset.y) < 1
+            ) {
                 return;
             }
             this._containerOffset = p;
@@ -331,7 +343,7 @@ export default class EvergridLayout {
 
         this.scale$ = normalizeAnimatedDerivedValueXY(scale, {
             info: this,
-            defaults: { x: 1, y: 1}
+            defaults: { x: 1, y: 1 },
         });
         this._scale = {
             // @ts-ignore: _value is private
@@ -441,18 +453,17 @@ export default class EvergridLayout {
                 // onStartShouldSetPanResponderCapture: aquire(),
                 onMoveShouldSetPanResponder: aquire(),
                 // onMoveShouldSetPanResponderCapture: aquire(),
-                onPanResponderStart: removeDefaultCurry((e, g) => this._onBeginPan(e, g)),
+                onPanResponderStart: removeDefaultCurry((e, g) =>
+                    this._onBeginPan(e, g)
+                ),
                 onPanResponderMove: (...args: any[]) => {
                     if (this._panDefaultPrevented) {
                         return;
                     }
-                    Animated.event(
-                        [null, panGestureState],
-                        {
-                            // listener: event => {},
-                            useNativeDriver: this.useNativeDriver
-                        }
-                    )(...args);
+                    Animated.event([null, panGestureState], {
+                        // listener: event => {},
+                        useNativeDriver: this.useNativeDriver,
+                    })(...args);
                 },
                 onPanResponderEnd: (e, g) => this._onPressOut(e, g),
                 onPanResponderTerminate: (e, g) => this._onPressOut(e, g),
@@ -477,10 +488,10 @@ export default class EvergridLayout {
     /**
      * Called when the layout is added to the view
      * and before the view is mounted.
-     * 
+     *
      * Subclasses must call the super implementation.
-     * 
-     * @param view 
+     *
+     * @param view
      */
     configure(view: Evergrid) {
         this.view = view;
@@ -546,7 +557,9 @@ export default class EvergridLayout {
             let layoutSource = layoutSources[i];
             // Check duplicates
             if (layoutSources.indexOf(layoutSource, i) > i) {
-                throw new Error(`Cannot add duplicate layout source "${layoutSource.id}"`);
+                throw new Error(
+                    `Cannot add duplicate layout source "${layoutSource.id}"`
+                );
             }
 
             if (previousLayoutSources.indexOf(layoutSource) < 0) {
@@ -572,7 +585,8 @@ export default class EvergridLayout {
     ) {
         let {
             strict = false,
-            zIndex = this.zIndexStart + this._layoutSources.length * this.zIndexStride,
+            zIndex = this.zIndexStart +
+                this._layoutSources.length * this.zIndexStride,
         } = options || {};
 
         let i = this._layoutSources.indexOf(layoutSource);
@@ -608,7 +622,7 @@ export default class EvergridLayout {
         }
         this._layoutSources.splice(i, 1);
         layoutSource.unconfigure();
-        
+
         this._maybeView?.setNeedsItemRenderMapUpdate();
         this._maybeView?.setNeedsRender();
     }
@@ -620,7 +634,7 @@ export default class EvergridLayout {
     /**
      * Calling this during a panning gesture, stops
      * the panning gesture until the gesture is finished.
-     * 
+     *
      * This is useful for interacting with content, for example.
      * You can achive this by creating a reference to this node
      * and calling `preventDefaultPan` in `onLongPress` callback.
@@ -637,7 +651,8 @@ export default class EvergridLayout {
 
     private _startLongPressTimer() {
         this._resetLongPress();
-        let maxDist = this.longPressMaxDistance || kDefaultProps.longPressMaxDistance;
+        let maxDist =
+            this.longPressMaxDistance || kDefaultProps.longPressMaxDistance;
         this._longPressTimer = setTimeout(() => {
             let ev = this._pressInEvent;
             let gestureState = this._pressInGestureState;
@@ -729,7 +744,9 @@ export default class EvergridLayout {
                     offset: this.viewOffset,
                     scaledVelocity: { ...panVelocity },
                 };
-                let maybeScrollLocation = this.callbacks.snapToLocation(scrollInfo);
+                let maybeScrollLocation = this.callbacks.snapToLocation(
+                    scrollInfo
+                );
                 if (typeof maybeScrollLocation !== 'undefined') {
                     // Scroll to location
                     let scrollOffset: IPoint = {
@@ -746,7 +763,9 @@ export default class EvergridLayout {
             }
 
             if (!handled) {
-                let isZeroVelocity = Math.abs(panVelocity.x) < kPanSpeedMin && Math.abs(panVelocity.y) < kPanSpeedMin;
+                let isZeroVelocity =
+                    Math.abs(panVelocity.x) < kPanSpeedMin &&
+                    Math.abs(panVelocity.y) < kPanSpeedMin;
                 if (!isZeroVelocity) {
                     // Decay velocity
                     this._descelerationAnimation = Animated.decay(
@@ -757,7 +776,9 @@ export default class EvergridLayout {
                         }
                     );
                     this._onStartDeceleration();
-                    this._descelerationAnimation.start(info => this._onEndDeceleration(info));
+                    this._descelerationAnimation.start(info =>
+                        this._onEndDeceleration(info)
+                    );
                 } else {
                     this._onEndDeceleration({ finished: true });
                 }
@@ -843,18 +864,18 @@ export default class EvergridLayout {
         let { x: x0, y: y0 } = this.anchor$;
         let { x: width, y: height } = this.containerSize$;
         return {
-            x: negate$(Animated.multiply(
-                width,
-                this._scale.x > 0 
-                    ? x0
-                    : Animated.subtract(1, x0),
-            )),
-            y: negate$(Animated.multiply(
-                height,
-                this._scale.y > 0 
-                    ? y0
-                    : Animated.subtract(1, y0),
-            )),
+            x: negate$(
+                Animated.multiply(
+                    width,
+                    this._scale.x > 0 ? x0 : Animated.subtract(1, x0)
+                )
+            ),
+            y: negate$(
+                Animated.multiply(
+                    height,
+                    this._scale.y > 0 ? y0 : Animated.subtract(1, y0)
+                )
+            ),
         };
     }
 
@@ -869,26 +890,16 @@ export default class EvergridLayout {
         return {
             x: Animated.add(
                 this._locationOffsetBase$.x,
-                Animated.divide(
-                    this.viewOffset$.x,
-                    this.scale$.x,
-                ),
+                Animated.divide(this.viewOffset$.x, this.scale$.x)
             ),
             y: Animated.add(
                 this._locationOffsetBase$.y,
-                Animated.divide(
-                    this.viewOffset$.y,
-                    this.scale$.y,
-                ),
+                Animated.divide(this.viewOffset$.y, this.scale$.y)
             ),
         };
     }
 
-    getContainerSize(
-        options?: {
-            insets?: Partial<IInsets<number>>;
-        },
-    ): IPoint {
+    getContainerSize(options?: { insets?: Partial<IInsets<number>> }): IPoint {
         if (options?.insets) {
             return insetSize(this._containerSize, options.insets);
         } else {
@@ -896,11 +907,9 @@ export default class EvergridLayout {
         }
     }
 
-    getContainerSize$(
-        options?: {
-            insets?: Partial<IInsets<Animated.Animated>>;
-        },
-    ): IAnimatedPoint {
+    getContainerSize$(options?: {
+        insets?: Partial<IInsets<Animated.Animated>>;
+    }): IAnimatedPoint {
         if (options?.insets) {
             return insetSize$(this.containerSize$, options.insets);
         } else {
@@ -934,7 +943,7 @@ export default class EvergridLayout {
 
     /**
      * Called after container size has changed.
-     * 
+     *
      * Subclasses must call super implementation.
      */
     didChangeContainerSize() {
@@ -943,16 +952,14 @@ export default class EvergridLayout {
 
     /**
      * Called after container offset has changed.
-     * 
+     *
      * Subclasses must call super implementation.
      */
-    didChangeContainerOffset() {
-
-    }
+    didChangeContainerOffset() {}
 
     /**
      * Called after viewport size has changed.
-     * 
+     *
      * Subclasses must call super implementation.
      */
     didChangeViewportSize() {
@@ -962,7 +969,7 @@ export default class EvergridLayout {
 
     /**
      * Called after content location has changed.
-     * 
+     *
      * Subclasses must call super implementation.
      */
     didChangeLocation() {
@@ -971,7 +978,7 @@ export default class EvergridLayout {
 
     /**
      * Called after scale has changed.
-     * 
+     *
      * Subclasses must call super implementation.
      */
     didChangeScale() {
@@ -981,7 +988,7 @@ export default class EvergridLayout {
 
     /**
      * Called after anchor has changed.
-     * 
+     *
      * Subclasses must call super implementation.
      */
     didChangeAnchor() {
@@ -1083,7 +1090,7 @@ export default class EvergridLayout {
 
     /**
      * Called after an update.
-     * 
+     *
      * Subclasses must call super implementation.
      */
     didUpdate(info: IUpdateInfo) {}
@@ -1099,11 +1106,9 @@ export default class EvergridLayout {
         return { ...this._scale };
     }
 
-    getVisibleLocationRange(
-        options?: {
-            insets?: Partial<IInsets<number>>;
-        },
-    ): [IPoint, IPoint] {
+    getVisibleLocationRange(options?: {
+        insets?: Partial<IInsets<number>>;
+    }): [IPoint, IPoint] {
         let size = this.containerSize;
         if (options?.insets) {
             size = insetSize(size, options.insets);
@@ -1114,14 +1119,10 @@ export default class EvergridLayout {
         let offset = this.viewOffset;
         let scale = this.scale;
         if (options?.insets) {
-            offset = insetPoint(
-                offset,
-                options.insets,
-                {
-                    invertX: scale.x < 0,
-                    invertY: scale.y < 0,
-                }
-            );
+            offset = insetPoint(offset, options.insets, {
+                invertX: scale.x < 0,
+                invertY: scale.y < 0,
+            });
         }
         let startOffset = {
             x: Math.ceil(offset.x),
@@ -1133,12 +1134,12 @@ export default class EvergridLayout {
         };
         if (scale.x < 0) {
             let xSave = startOffset.x;
-            startOffset.x = endOffset.x
+            startOffset.x = endOffset.x;
             endOffset.x = xSave;
         }
         if (scale.y < 0) {
             let ySave = startOffset.y;
-            startOffset.y = endOffset.y
+            startOffset.y = endOffset.y;
             endOffset.y = ySave;
         }
         let start = this.getLocation(startOffset);
@@ -1152,7 +1153,7 @@ export default class EvergridLayout {
     /**
      * Transforms a vector in content coordinates
      * to a vector in view coordinates (pixels).
-     * @param point 
+     * @param point
      */
     scaleVector(point: IPoint): IPoint {
         return {
@@ -1164,7 +1165,7 @@ export default class EvergridLayout {
     /**
      * Transforms an animated vector in content coordinates
      * to an animated vector in view coordinates (pixels).
-     * @param point 
+     * @param point
      */
     scaleVector$(point: IAnimatedPoint): IAnimatedPoint {
         return {
@@ -1176,10 +1177,10 @@ export default class EvergridLayout {
     /**
      * Transforms an animated size in content coordinates
      * to an animated size in view coordinates (pixels).
-     * 
+     *
      * Accounts for negative scale.
-     * 
-     * @param size 
+     *
+     * @param size
      */
     scaleSize$(size: IAnimatedPoint): IAnimatedPoint {
         let { scale } = this;
@@ -1199,7 +1200,7 @@ export default class EvergridLayout {
     /**
      * Transforms a vector in view coordinates (pixels)
      * to a vector in content coordinates.
-     * @param point 
+     * @param point
      */
     unscaleVector(point: IPoint): IPoint {
         if (this._scale.x === 0 || this._scale.y === 0) {
@@ -1221,7 +1222,7 @@ export default class EvergridLayout {
     /**
      * Transforms a point in content coordinates
      * to a point in container coordinates.
-     * @param point 
+     * @param point
      */
     getContainerLocation(
         point: IPoint,
@@ -1255,7 +1256,7 @@ export default class EvergridLayout {
     /**
      * Transforms a point in content coordinates
      * to a point in container coordinates.
-     * @param point 
+     * @param point
      */
     getContainerLocation$(
         point: IAnimatedPoint | Animated.ValueXY,
@@ -1266,14 +1267,8 @@ export default class EvergridLayout {
         let { x: xl0, y: yl0 } = this._locationOffsetBase$;
         let { x: x0, y: y0 } = this.containerOriginOffset$;
         let cp: IAnimatedPoint = {
-            x: Animated.subtract(
-                this.viewOffset$.x,
-                x0,
-            ),
-            y: Animated.subtract(
-                this.viewOffset$.y,
-                y0,
-            ),
+            x: Animated.subtract(this.viewOffset$.x, x0),
+            y: Animated.subtract(this.viewOffset$.y, y0),
         };
         let scale: IAnimatedPoint = {
             x: this.scale$.x,
@@ -1289,23 +1284,11 @@ export default class EvergridLayout {
         }
         cp.x = Animated.add(
             cp.x,
-            Animated.multiply(
-                Animated.add(
-                    point.x,
-                    xl0,
-                ),
-                scale.x,
-            ),
+            Animated.multiply(Animated.add(point.x, xl0), scale.x)
         );
         cp.y = Animated.add(
             cp.y,
-            Animated.multiply(
-                Animated.add(
-                    point.y,
-                    yl0,
-                ),
-                scale.y,
-            ),
+            Animated.multiply(Animated.add(point.y, yl0), scale.y)
         );
         return cp;
     }
@@ -1313,7 +1296,7 @@ export default class EvergridLayout {
     /**
      * Transforms a point in view coordinates (pixels)
      * to a point in content coordinates.
-     * @param point 
+     * @param point
      */
     getLocation(point: IPoint): IPoint {
         if (this._scale.x === 0 || this._scale.y === 0) {
@@ -1353,7 +1336,8 @@ export default class EvergridLayout {
     }
 
     scrollTo(
-        options: (IScrollToOffsetOptions | IScrollToRangeOptions) & IAnimationBaseOptions
+        options: (IScrollToOffsetOptions | IScrollToRangeOptions) &
+            IAnimationBaseOptions
     ): Animated.CompositeAnimation | undefined {
         if (this._panStarted) {
             // Pan overrides scrolling
@@ -1387,11 +1371,7 @@ export default class EvergridLayout {
             offset = undefined;
         }
 
-        if (
-            scale &&
-            scale.x === this._scale.x &&
-            scale.y === this._scale.y
-        ) {
+        if (scale && scale.x === this._scale.x && scale.y === this._scale.y) {
             // No change
             scale = undefined;
         }
@@ -1419,21 +1399,19 @@ export default class EvergridLayout {
         let offsetAnimation: Animated.CompositeAnimation | undefined;
         if (offset) {
             if (options.timing) {
-                offsetAnimation = Animated.timing(
-                    this._locationOffsetBase$,
-                    {
-                        toValue: offset,
-                        easing: Easing.inOut(Easing.exp),
-                        ...options.timing,
-                        useNativeDriver: this.useNativeDriver,
-                    }
-                );
+                offsetAnimation = Animated.timing(this._locationOffsetBase$, {
+                    toValue: offset,
+                    easing: Easing.inOut(Easing.exp),
+                    ...options.timing,
+                    useNativeDriver: this.useNativeDriver,
+                });
             } else {
                 offsetAnimation = Animated.spring(
                     this._locationOffsetBase$, // Auto-multiplexed
                     {
                         toValue: offset,
-                        velocity: options.spring?.velocity || this.contentVelocity,
+                        velocity:
+                            options.spring?.velocity || this.contentVelocity,
                         bounciness: 0,
                         ...options.spring,
                         useNativeDriver: this.useNativeDriver,
@@ -1445,15 +1423,12 @@ export default class EvergridLayout {
         let scaleAnimation: Animated.CompositeAnimation | undefined;
         if (scale) {
             if (options.timing) {
-                scaleAnimation = Animated.timing(
-                    this.scale$,
-                    {
-                        toValue: scale,
-                        easing: Easing.inOut(Easing.exp),
-                        ...options.timing,
-                        useNativeDriver: this.useNativeDriver,
-                    }
-                );
+                scaleAnimation = Animated.timing(this.scale$, {
+                    toValue: scale,
+                    easing: Easing.inOut(Easing.exp),
+                    ...options.timing,
+                    useNativeDriver: this.useNativeDriver,
+                });
             } else {
                 scaleAnimation = Animated.spring(
                     this.scale$, // Auto-multiplexed
@@ -1469,7 +1444,10 @@ export default class EvergridLayout {
 
         let compositeAnimation: Animated.CompositeAnimation;
         if (offsetAnimation && scaleAnimation) {
-            compositeAnimation = Animated.parallel([offsetAnimation, scaleAnimation]);
+            compositeAnimation = Animated.parallel([
+                offsetAnimation,
+                scaleAnimation,
+            ]);
         } else if (offsetAnimation) {
             compositeAnimation = offsetAnimation;
         } else if (scaleAnimation) {
@@ -1506,20 +1484,24 @@ export default class EvergridLayout {
         let containerSize = this._containerSize;
         if (options?.insets) {
             containerSize = insetSize(containerSize, options.insets);
-            insetOffset = insetTranslation(
-                options.insets,
-                {
-                    anchor: this._anchor,
-                    invertX: scale.x < 0,
-                    invertY: scale.y < 0,
-                },
-            );
+            insetOffset = insetTranslation(options.insets, {
+                anchor: this._anchor,
+                invertX: scale.x < 0,
+                invertY: scale.y < 0,
+            });
         }
         for (let axis of ['x', 'y'] as (keyof IPoint)[]) {
             let min = range[0][axis];
             let max = range[1][axis];
-            if (containerSize[axis] >= 1 && (typeof min !== 'undefined' || typeof max !== 'undefined')) {
-                if (typeof min === 'undefined' || typeof max === 'undefined' || max <= min) {
+            if (
+                containerSize[axis] >= 1 &&
+                (typeof min !== 'undefined' || typeof max !== 'undefined')
+            ) {
+                if (
+                    typeof min === 'undefined' ||
+                    typeof max === 'undefined' ||
+                    max <= min
+                ) {
                     throw new Error(`Invalid range.${axis}: [${min}, ${max}]`);
                 }
                 let targetLen = max - min;
@@ -1529,7 +1511,7 @@ export default class EvergridLayout {
                     scaleSign = -1;
                 }
                 offset[axis] = -min - targetLen * anchor;
-                scale[axis] = containerSize[axis] / targetLen * scaleSign;
+                scale[axis] = (containerSize[axis] / targetLen) * scaleSign;
 
                 offset[axis] += insetOffset[axis] / Math.abs(scale[axis]);
             }
@@ -1568,7 +1550,7 @@ export default class EvergridLayout {
             };
             AppState.addEventListener(
                 'memoryWarning',
-                this._memoryWarningListener,
+                this._memoryWarningListener
             );
         }
     }
@@ -1577,7 +1559,7 @@ export default class EvergridLayout {
         if (this._memoryWarningListener) {
             AppState.removeEventListener(
                 'memoryWarning',
-                this._memoryWarningListener,
+                this._memoryWarningListener
             );
             this._memoryWarningListener = undefined;
         }

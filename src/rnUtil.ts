@@ -19,7 +19,7 @@ export const normalizeAnimatedValue = (
     x: Animated.Value | number | string | undefined,
     options?: {
         defaults?: Animated.Value;
-    },
+    }
 ): Animated.Value => {
     switch (typeof x) {
         case 'undefined':
@@ -33,14 +33,22 @@ export const normalizeAnimatedValue = (
             break;
     }
     throw new Error('Invalid animated value');
-}
+};
 
 export const normalizeAnimatedValueOrInterpolation = (
-    x: Animated.AnimatedInterpolation | Animated.Value | number | string | undefined,
+    x:
+        | Animated.AnimatedInterpolation
+        | Animated.Value
+        | number
+        | string
+        | undefined,
     options?: {
-        relativeLength?: Animated.Value | Animated.AnimatedInterpolation | number;
+        relativeLength?:
+            | Animated.Value
+            | Animated.AnimatedInterpolation
+            | number;
         defaults?: Animated.Value;
-    },
+    }
 ): Animated.Value | Animated.AnimatedInterpolation => {
     if (x === null) {
         x = undefined;
@@ -56,7 +64,9 @@ export const normalizeAnimatedValueOrInterpolation = (
         case 'string':
             let unity = options?.relativeLength;
             if (!unity) {
-                throw new Error('Must specify relative length to support relative value');
+                throw new Error(
+                    'Must specify relative length to support relative value'
+                );
             }
             let coef = parseRelativeValue(x);
             return coef === 1
@@ -64,14 +74,14 @@ export const normalizeAnimatedValueOrInterpolation = (
                 : Animated.multiply(coef, unity);
     }
     throw new Error('Invalid animated value');
-}
+};
 
 export function normalizeAnimatedDerivedValue<Info>(
     value: AnimatedValueDerivedInput<Info> | undefined,
     options: {
-        info: Info,
+        info: Info;
         defaults?: Animated.Value;
-    },
+    }
 ): Animated.Value {
     if (typeof value === 'function') {
         value = value(options.info);
@@ -82,9 +92,9 @@ export function normalizeAnimatedDerivedValue<Info>(
 export function normalizeAnimatedDerivedValueXY<Info>(
     point: AnimatedValueXYDerivedInput<Info> | undefined,
     options: {
-        info: Info,
-        defaults?: IAnimatedValueXYInput | Animated.ValueXY,
-    },
+        info: Info;
+        defaults?: IAnimatedValueXYInput | Animated.ValueXY;
+    }
 ): Animated.ValueXY {
     if (typeof point === 'function') {
         point = point(options.info);
@@ -112,7 +122,7 @@ export const normalizePartialAnimatedPoint = (
     point?: Partial<IAnimatedPointInput>,
     options?: {
         relativeSize?: Partial<IAnimatedPoint>;
-    },
+    }
 ): Partial<IAnimatedPoint> => {
     let { x, y } = point || {};
     let normPoint: Partial<IAnimatedPoint> = {};
@@ -133,7 +143,7 @@ export const normalizePartialAnimatedLayout = (
     layout?: IPartialLayout<IAnimatedPointInput>,
     options?: {
         relativeSize?: Partial<IAnimatedPoint>;
-    },
+    }
 ): IPartialLayout<IAnimatedPoint> => {
     let offset = normalizePartialAnimatedPoint(layout?.offset, options);
     let size = normalizePartialAnimatedPoint(layout?.size, options);
@@ -184,14 +194,8 @@ export const safeFunction = (f: any) => {
 };
 
 export function removeDefaultCurry<T>(
-    cb: (
-        e: GestureResponderEvent,
-        gestureState: PanResponderGestureState
-    ) => T
-): (
-    e: GestureResponderEvent,
-    gestureState: PanResponderGestureState
-) => T {
+    cb: (e: GestureResponderEvent, gestureState: PanResponderGestureState) => T
+): (e: GestureResponderEvent, gestureState: PanResponderGestureState) => T {
     return (e, gestureState) => {
         if (e?.preventDefault) {
             e.preventDefault();
@@ -199,7 +203,7 @@ export function removeDefaultCurry<T>(
         }
         return cb(e, gestureState);
     };
-};
+}
 
 export const animateValueIfNeeded = (
     value$: Animated.Value,
@@ -261,14 +265,11 @@ export const animateValueIfNeeded = (
 //     return packageRoot;
 // };
 
-
-export function insetSize$(size: IAnimatedPoint, insets: Partial<IInsets<Animated.Animated>>): IAnimatedPoint {
-    let {
-        left = 0,
-        right = 0,
-        top = 0,
-        bottom = 0,
-    } = insets;
+export function insetSize$(
+    size: IAnimatedPoint,
+    insets: Partial<IInsets<Animated.Animated>>
+): IAnimatedPoint {
+    let { left = 0, right = 0, top = 0, bottom = 0 } = insets;
     let p = { ...size };
 
     let insetWidth: Animated.Animated = 0;
@@ -300,13 +301,13 @@ export function insetSize$(size: IAnimatedPoint, insets: Partial<IInsets<Animate
 
 /**
  * Returns an offset based on given insets.
- * 
+ *
  * The positive direction of y is down.
  * To reverse this, set invertY to `true`.
- * 
- * @param point 
- * @param insets 
- * @param options 
+ *
+ * @param point
+ * @param insets
+ * @param options
  */
 export function insetTranslation$(
     insets: Partial<IInsets<Animated.Animated>>,
@@ -314,19 +315,11 @@ export function insetTranslation$(
         anchor?: IAnimatedPoint;
         invertX?: boolean;
         invertY?: boolean;
-    },
+    }
 ): IAnimatedPoint {
-    let {
-        left = 0,
-        right = 0,
-        top = 0,
-        bottom = 0,
-    } = insets;
-    let {
-        anchor = zeroPoint(),
-        invertX = false,
-        invertY = false,
-    } = options || {};
+    let { left = 0, right = 0, top = 0, bottom = 0 } = insets;
+    let { anchor = zeroPoint(), invertX = false, invertY = false } =
+        options || {};
     if (invertX) {
         let save = right;
         right = left;
@@ -339,31 +332,25 @@ export function insetTranslation$(
     }
     return {
         x: Animated.subtract(
-            Animated.multiply(
-                Animated.subtract(1, anchor.x),
-                left
-            ),
-            Animated.multiply(anchor.x, right),
+            Animated.multiply(Animated.subtract(1, anchor.x), left),
+            Animated.multiply(anchor.x, right)
         ),
         y: Animated.subtract(
-            Animated.multiply(
-                Animated.subtract(1, anchor.y),
-                top
-            ),
-            Animated.multiply(anchor.y, bottom),
+            Animated.multiply(Animated.subtract(1, anchor.y), top),
+            Animated.multiply(anchor.y, bottom)
         ),
     };
 }
 
 /**
  * Offsets a point with insets.
- * 
+ *
  * The positive direction of y is down.
  * To reverse this, set invertY to `true`.
- * 
- * @param point 
- * @param insets 
- * @param options 
+ *
+ * @param point
+ * @param insets
+ * @param options
  */
 export function insetPoint$(
     point: IAnimatedPoint,
@@ -372,7 +359,7 @@ export function insetPoint$(
         anchor?: IAnimatedPoint;
         invertX?: boolean;
         invertY?: boolean;
-    },
+    }
 ): IAnimatedPoint {
     let offset = insetTranslation$(insets, options);
     return {
@@ -380,4 +367,3 @@ export function insetPoint$(
         y: Animated.add(point.y, offset.y),
     };
 }
-

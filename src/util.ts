@@ -1,9 +1,4 @@
-import {
-    IInsets,
-    IItemLayout,
-    ILayout,
-    IPoint,
-} from './types';
+import { IInsets, IItemLayout, ILayout, IPoint } from './types';
 
 export const getLazyValue = (obj: any, key: string | number, defaults: any) => {
     if (!(key in obj)) {
@@ -36,7 +31,9 @@ export const isPoint = (p: Partial<IPoint> | undefined): p is IPoint => {
     return !!p && typeof p.x === 'number' && typeof p.y === 'number';
 };
 
-export const isPartialPoint = (p: Partial<IPoint> | undefined): p is Partial<IPoint> => {
+export const isPartialPoint = (
+    p: Partial<IPoint> | undefined
+): p is Partial<IPoint> => {
     return !!p && (typeof p.x === 'number' || typeof p.y === 'number');
 };
 
@@ -49,15 +46,28 @@ export const yRange = (pointRange: [IPoint, IPoint]): [number, number] => {
 };
 
 export const emptyRange = (): [number, number] => [0, 0];
-export const emptyPointRange = (): [IPoint, IPoint] => [zeroPoint(), zeroPoint()];
+export const emptyPointRange = (): [IPoint, IPoint] => [
+    zeroPoint(),
+    zeroPoint(),
+];
 
-export const isRangeEqual = (r1: [number, number], r2: [number, number]): boolean => {
+export const isRangeEqual = (
+    r1: [number, number],
+    r2: [number, number]
+): boolean => {
     return r1[0] === r2[0] && r1[1] === r2[1];
 };
 
-export const isPointRangeEqual = (r1: [IPoint, IPoint], r2: [IPoint, IPoint]): boolean => {
-    return r1[0].x === r2[0].x && r1[1].x === r2[1].x
-        && r1[0].y === r2[0].y && r1[1].y === r2[1].y;
+export const isPointRangeEqual = (
+    r1: [IPoint, IPoint],
+    r2: [IPoint, IPoint]
+): boolean => {
+    return (
+        r1[0].x === r2[0].x &&
+        r1[1].x === r2[1].x &&
+        r1[0].y === r2[0].y &&
+        r1[1].y === r2[1].y
+    );
 };
 
 export const isRangeEmpty = (r: [number, number]): boolean => {
@@ -71,11 +81,11 @@ export const isPointRangeEmpty = (r: [IPoint, IPoint]): boolean => {
 /**
  * Returns true if the specified point `p` is inside the
  * specified range `r`.
- * 
+ *
  * The range lower bounds are inclusive and upper bounds
  * are exclusive.
- * 
- * @param p {IPoint} The point. 
+ *
+ * @param p {IPoint} The point.
  * @param r {[IPoint, IPoint]} The point range.
  */
 export const isPointInRange = (p: IPoint, r: [IPoint, IPoint]): boolean => {
@@ -92,20 +102,20 @@ export function isSetEqual<T>(s1: Set<T>, s2: Set<T>): boolean {
         }
     }
     return true;
-};
+}
 
 export const maxLayoutPoint = (layout: ILayout<IPoint>): IPoint => {
     return {
         x: layout.offset.x + layout.size.x,
         y: layout.offset.y + layout.size.y,
-    }
+    };
 };
 
 export declare type IteratorReturnType = { stop: boolean } | undefined | void;
 
-export function * forEachInstertedIndexInSet<T>(
+export function* forEachInstertedIndexInSet<T>(
     s0: Set<T>,
-    s1: Set<T>,
+    s1: Set<T>
 ): Generator<T, undefined> {
     for (let i of s1) {
         if (!s0.has(i)) {
@@ -115,9 +125,9 @@ export function * forEachInstertedIndexInSet<T>(
     return undefined;
 }
 
-export function * forEachInstertedIndexInRange(
+export function* forEachInstertedIndexInRange(
     r0: [number, number],
-    r1: [number, number],
+    r1: [number, number]
 ): Generator<number, undefined> {
     let [i00, i0N] = r0;
     let [i10, i1N] = r1;
@@ -144,9 +154,9 @@ export function * forEachInstertedIndexInRange(
     return undefined;
 }
 
-export function * forEachInstertedPointInRange(
+export function* forEachInstertedPointInRange(
     r0: [IPoint, IPoint],
-    r1: [IPoint, IPoint],
+    r1: [IPoint, IPoint]
 ): Generator<IPoint, undefined> {
     // Y axis positive direction is up
     let [p00, p0N] = r0;
@@ -191,11 +201,17 @@ export function * forEachInstertedPointInRange(
     return undefined;
 }
 
-export const isPointInsideItemLayout = (p: IPoint, layout: IItemLayout): boolean => {
+export const isPointInsideItemLayout = (
+    p: IPoint,
+    layout: IItemLayout
+): boolean => {
     if (p.x < layout.offset.x || p.y < layout.offset.y) {
         return false;
     }
-    return p.x <= layout.offset.x + layout.size.x && p.y <= layout.offset.y + layout.size.y;
+    return (
+        p.x <= layout.offset.x + layout.size.x &&
+        p.y <= layout.offset.y + layout.size.y
+    );
 };
 
 export function iterateAll<T>(iterable: Iterable<T>): T[] {
@@ -218,9 +234,7 @@ export const parseRelativeValue = (value: string): number => {
 export function weakref<T = any>(value?: T) {
     const _key: any = {};
     let _map = new WeakMap<typeof _key, T>(
-        typeof value !== 'undefined'
-            ? [_key, value]
-            : undefined
+        typeof value !== 'undefined' ? [_key, value] : undefined
     );
     return {
         get: (): T | undefined => _map.get(_key),
@@ -233,7 +247,7 @@ export function weakref<T = any>(value?: T) {
         },
         set: (value: T) => _map.set(_key, value),
     };
-};
+}
 
 // export const estimateFinalDecayValue = (
 //     {
@@ -273,13 +287,11 @@ export function weakref<T = any>(value?: T) {
 //     return x;
 // };
 
-export function insetSize(size: IPoint, insets: Partial<IInsets<number>>): IPoint {
-    let {
-        left = 0,
-        right = 0,
-        top = 0,
-        bottom = 0,
-    } = insets;
+export function insetSize(
+    size: IPoint,
+    insets: Partial<IInsets<number>>
+): IPoint {
+    let { left = 0, right = 0, top = 0, bottom = 0 } = insets;
     return {
         x: size.x - left - right,
         y: size.y - top - bottom,
@@ -288,13 +300,13 @@ export function insetSize(size: IPoint, insets: Partial<IInsets<number>>): IPoin
 
 /**
  * Returns an offset based on given insets.
- * 
+ *
  * The positive direction of y is down.
  * To reverse this, set invertY to `true`.
- * 
- * @param point 
- * @param insets 
- * @param options 
+ *
+ * @param point
+ * @param insets
+ * @param options
  */
 export function insetTranslation(
     insets: Partial<IInsets<number>>,
@@ -302,19 +314,11 @@ export function insetTranslation(
         anchor?: IPoint;
         invertX?: boolean;
         invertY?: boolean;
-    },
+    }
 ): IPoint {
-    let {
-        left = 0,
-        right = 0,
-        top = 0,
-        bottom = 0,
-    } = insets;
-    let {
-        anchor = zeroPoint(),
-        invertX = false,
-        invertY = false,
-    } = options || {};
+    let { left = 0, right = 0, top = 0, bottom = 0 } = insets;
+    let { anchor = zeroPoint(), invertX = false, invertY = false } =
+        options || {};
     if (invertX) {
         let save = right;
         right = left;
@@ -333,13 +337,13 @@ export function insetTranslation(
 
 /**
  * Offsets a point with insets.
- * 
+ *
  * The positive direction of y is down.
  * To reverse this, set invertY to `true`.
- * 
- * @param point 
- * @param insets 
- * @param options 
+ *
+ * @param point
+ * @param insets
+ * @param options
  */
 export function insetPoint(
     point: IPoint,
@@ -348,7 +352,7 @@ export function insetPoint(
         anchor?: IPoint;
         invertX?: boolean;
         invertY?: boolean;
-    },
+    }
 ): IPoint {
     let offset = insetTranslation(insets, options);
     return {
