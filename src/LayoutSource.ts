@@ -123,6 +123,8 @@ export interface LayoutSourceProps<T> {
      * values to larger or smaller than 1 to make
      * the items appear closer and further away
      * respectively.
+     *
+     * Changing the sign of a scale component is not supported.
      */
     scale?: AnimatedValueXYDerivedInput<LayoutSource>;
 

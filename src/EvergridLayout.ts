@@ -147,7 +147,11 @@ export interface EvergridLayoutProps extends EvergridLayoutPrimitiveProps {
     offset?: AnimatedValueXYDerivedInput<EvergridLayout>;
     /** Initial offset in view coordinates. */
     viewOffset?: AnimatedValueXYDerivedInput<EvergridLayout>;
-    /** Scale relating content and view coordinate systems. */
+    /**
+     * Scale relating content and view coordinate systems.
+     *
+     * Changing the sign of a scale component is not supported.
+     */
     scale?: AnimatedValueXYDerivedInput<EvergridLayout>;
     /**
      * The point with values in the range 0-1.
@@ -260,6 +264,8 @@ export default class EvergridLayout {
     private _updateTimer?: any;
     // private _mounted = false;
 
+    readonly locationOffsetTarget$: Animated.ValueXY;
+    readonly scaleTarget$: Animated.ValueXY;
     private _locationOffsetTarget: Partial<IPoint>;
     private _scaleTarget: Partial<IPoint>;
     private _targetDepth = 0;
@@ -363,13 +369,15 @@ export default class EvergridLayout {
             if (p.x === this._scale.x && p.y === this._scale.y) {
                 return;
             }
+            let previousScale = this._scale;
             // TODO: Reload all items if scale changes sign.
             this._scale = p;
-            this.didChangeScale();
+            this.didChangeScale(previousScale, { ...p });
         });
         this._animatedSubscriptions[sub] = this.scale$;
 
         this._scaleTarget = {};
+        this.scaleTarget$ = new Animated.ValueXY(this._scale);
 
         this.anchor$ = normalizeAnimatedDerivedValueXY(anchor, {
             info: this,
@@ -399,12 +407,16 @@ export default class EvergridLayout {
             y: this._locationOffsetBase$.y._value || 0,
         };
         sub = this._locationOffsetBase$.addListener(p => {
+            let previousLocation = this._locationOffsetBase;
             this._locationOffsetBase = p;
-            this.didChangeLocation();
+            this.didChangeLocationOffsetBase(previousLocation, { ...p });
         });
         this._animatedSubscriptions[sub] = this._locationOffsetBase$;
 
         this._locationOffsetTarget = {};
+        this.locationOffsetTarget$ = new Animated.ValueXY(
+            this._locationOffsetBase
+        );
 
         this.viewOffset$ = normalizeAnimatedDerivedValueXY(viewOffset, {
             info: this,
@@ -987,20 +999,42 @@ export default class EvergridLayout {
     }
 
     /**
+     * Called before the location is changed as
+     * part of a scroll target.
+     *
+     * Subclasses must call super implementation.
+     */
+    willChangeLocationOffsetBase(
+        oldLocationOffsetBase: IPoint,
+        newLocationOffsetBase: IPoint
+    ) {}
+
+    /**
      * Called after content location has changed.
      *
      * Subclasses must call super implementation.
      */
-    didChangeLocation() {
+    didChangeLocationOffsetBase(
+        oldLocationOffsetBase: IPoint,
+        newLocationOffsetBase: IPoint
+    ) {
         this.setNeedsUpdate();
     }
+
+    /**
+     * Called before the scale is changed as
+     * part of a scroll target.
+     *
+     * Subclasses must call super implementation.
+     */
+    willChangeScale(oldScale: IPoint, newScale: IPoint) {}
 
     /**
      * Called after scale has changed.
      *
      * Subclasses must call super implementation.
      */
-    didChangeScale() {
+    didChangeScale(oldScale: IPoint, newScale: IPoint) {
         this.callbacks.onScaleChanged?.(this);
         this.setNeedsUpdate();
     }
@@ -1123,8 +1157,8 @@ export default class EvergridLayout {
 
     get scale(): IPoint {
         return {
-            ...this._scaleTarget,
             ...this._scale,
+            ...this._scaleTarget,
         };
     }
 
@@ -1434,6 +1468,18 @@ export default class EvergridLayout {
         //         finalOffset
         //     )} scale: ${JSON.stringify(finalScale)}`
         // );
+
+        if (needOffset) {
+            this.locationOffsetTarget$.setValue(finalOffset);
+            this.willChangeLocationOffsetBase(
+                this._locationOffsetBase,
+                finalOffset
+            );
+        }
+        if (needScale) {
+            this.scaleTarget$.setValue(finalScale);
+            this.willChangeScale(this._scale, finalScale);
+        }
 
         this._startInteraction();
 

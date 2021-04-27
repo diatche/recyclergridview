@@ -4,6 +4,16 @@
 
 Changes on the `master` branch, but not yet released, will be listed here.
 
+### Features
+
+-   It is now possible to call `scrollTo` and `scrollBy` multiple times. Scrolling information will be merged.
+-   Added previous and new values to `didChangeLocationOffsetBase` (previously `didChangeLocation`) and `willChangeScale` callbacks.
+-   Added `willChangeLocationOffsetBase` and `willChangeScale` callbacks, which fire before scrolling starts.
+
+### Breaking Changes
+
+-   Renamed `didChangeLocation` to `didChangeLocationOffsetBase`.
+
 ## 0.1.0
 
 **15 Apr 2021**
