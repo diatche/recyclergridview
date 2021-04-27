@@ -4,6 +4,8 @@
 
 Changes on the `master` branch, but not yet released, will be listed here.
 
+## 0.2.0
+
 ### Features
 
 -   It is now possible to call `scrollTo` and `scrollBy` multiple times. Scrolling information will be merged.

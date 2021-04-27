@@ -1,6 +1,6 @@
 {
     "name": "evergrid",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "description": "A cross-platform infinite 2D scrollable view with efficient cell recycling using Animated framework, without using a scroll view.",
     "main": "dist/reactnative/index.js",
     "module": "dist/reactnative/index.js",
