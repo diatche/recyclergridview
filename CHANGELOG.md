@@ -13,6 +13,7 @@ Changes on the `master` branch, but not yet released, will be listed here.
 ### Breaking Changes
 
 -   Renamed `didChangeLocation` to `didChangeLocationOffsetBase`.
+-   Calling super in `didChangeScale`, `didChangeLocationOffsetBase` (previously `didChangeLocation`), `didChangeContainerSize`, `didChangeViewportSize`, `didChangeContainerOffset` and `didChangeAnchor` is now discouraged.
 
 ## 0.1.0
 
