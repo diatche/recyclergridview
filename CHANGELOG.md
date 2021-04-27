@@ -8,14 +8,14 @@ Changes on the `master` branch, but not yet released, will be listed here.
 
 ### Features
 
--   It is now possible to call `scrollTo` and `scrollBy` multiple times. Scrolling information will be merged.
--   Added previous and new values to `didChangeLocationOffsetBase` (previously `didChangeLocation`) and `willChangeScale` callbacks.
--   Added `willChangeLocationOffsetBase` and `willChangeScale` callbacks, which fire before scrolling starts.
+-   [[#25](https://github.com/diatche/evergrid/pull/25)] It is now possible to call `scrollTo` and `scrollBy` multiple times. Scrolling information will be merged.
+-   [[#25](https://github.com/diatche/evergrid/pull/25)] Added previous and new values to `didChangeLocationOffsetBase` (previously `didChangeLocation`) and `willChangeScale` callbacks.
+-   [[#25](https://github.com/diatche/evergrid/pull/25)] Added `willChangeLocationOffsetBase` and `willChangeScale` callbacks, which fire before scrolling starts.
 
 ### Breaking Changes
 
--   Renamed `didChangeLocation` to `didChangeLocationOffsetBase`.
--   Calling super in `didChangeScale`, `didChangeLocationOffsetBase` (previously `didChangeLocation`), `didChangeContainerSize`, `didChangeViewportSize`, `didChangeContainerOffset` and `didChangeAnchor` is now discouraged.
+-   [[#25](https://github.com/diatche/evergrid/pull/25)] Renamed `didChangeLocation` to `didChangeLocationOffsetBase`.
+-   [[#25](https://github.com/diatche/evergrid/pull/25)] Calling super in `didChangeScale`, `didChangeLocationOffsetBase` (previously `didChangeLocation`), `didChangeContainerSize`, `didChangeViewportSize`, `didChangeContainerOffset` and `didChangeAnchor` is now discouraged.
 
 ## 0.1.0
 
