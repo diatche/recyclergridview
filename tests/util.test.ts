@@ -6,6 +6,7 @@ import {
     parseRelativeValue,
     insetSize,
     insetPoint,
+    insetTranslation,
 } from '../src/util';
 
 describe('util', () => {
@@ -210,6 +211,13 @@ describe('util', () => {
     });
 
     describe('insetSize', () => {
+        const insets = {
+            left: 1,
+            right: 2,
+            top: 3,
+            bottom: 4,
+        };
+
         it('should inset size correctly', () => {
             expect(
                 insetSize(
@@ -217,12 +225,7 @@ describe('util', () => {
                         x: 10,
                         y: 10,
                     },
-                    {
-                        left: 1,
-                        right: 2,
-                        top: 3,
-                        bottom: 4,
-                    }
+                    insets
                 )
             ).toEqual({
                 x: 7,
@@ -231,7 +234,71 @@ describe('util', () => {
         });
     });
 
+    describe('insetTranslation', () => {
+        const insets = {
+            left: 1,
+            right: 2,
+            top: 3,
+            bottom: 4,
+        };
+
+        it('should return the correct translation when not inverted', () => {
+            expect(
+                insetTranslation(insets, {
+                    anchor: { x: 0, y: 0 },
+                    invertX: false,
+                    invertY: false,
+                })
+            ).toEqual({
+                x: 1,
+                y: 3,
+            });
+
+            expect(
+                insetTranslation(insets, {
+                    anchor: { x: 1, y: 1 },
+                    invertX: false,
+                    invertY: false,
+                })
+            ).toEqual({
+                x: -2,
+                y: -4,
+            });
+        });
+
+        it('should return the correct translation when inverted', () => {
+            expect(
+                insetTranslation(insets, {
+                    anchor: { x: 0, y: 0 },
+                    invertX: true,
+                    invertY: true,
+                })
+            ).toEqual({
+                x: 2,
+                y: 4,
+            });
+
+            expect(
+                insetTranslation(insets, {
+                    anchor: { x: 1, y: 1 },
+                    invertX: true,
+                    invertY: true,
+                })
+            ).toEqual({
+                x: -1,
+                y: -3,
+            });
+        });
+    });
+
     describe('insetPoint', () => {
+        const insets = {
+            left: 1,
+            right: 2,
+            top: 3,
+            bottom: 4,
+        };
+
         it('should inset point correctly in natural direction', () => {
             expect(
                 insetPoint(
@@ -239,12 +306,7 @@ describe('util', () => {
                         x: 10,
                         y: 10,
                     },
-                    {
-                        left: 1,
-                        right: 2,
-                        top: 3,
-                        bottom: 4,
-                    }
+                    insets
                 )
             ).toEqual({
                 x: 11,
@@ -259,12 +321,7 @@ describe('util', () => {
                         x: 10,
                         y: 10,
                     },
-                    {
-                        left: 1,
-                        right: 2,
-                        top: 3,
-                        bottom: 4,
-                    },
+                    insets,
                     {
                         invertX: true,
                         invertY: true,

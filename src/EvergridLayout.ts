@@ -147,7 +147,11 @@ export interface EvergridLayoutProps extends EvergridLayoutPrimitiveProps {
     offset?: AnimatedValueXYDerivedInput<EvergridLayout>;
     /** Initial offset in view coordinates. */
     viewOffset?: AnimatedValueXYDerivedInput<EvergridLayout>;
-    /** Scale relating content and view coordinate systems. */
+    /**
+     * Scale relating content and view coordinate systems.
+     *
+     * Changing the sign of a scale component is not supported.
+     */
     scale?: AnimatedValueXYDerivedInput<EvergridLayout>;
     /**
      * The point with values in the range 0-1.
@@ -260,6 +264,12 @@ export default class EvergridLayout {
     private _updateTimer?: any;
     // private _mounted = false;
 
+    readonly locationOffsetTarget$: Animated.ValueXY;
+    readonly scaleTarget$: Animated.ValueXY;
+    private _locationOffsetTarget: Partial<IPoint>;
+    private _scaleTarget: Partial<IPoint>;
+    private _targetDepth = 0;
+
     constructor(options?: EvergridLayoutCallbacks & EvergridLayoutProps) {
         let {
             layoutSources,
@@ -323,7 +333,7 @@ export default class EvergridLayout {
                 return;
             }
             this._containerSize = p;
-            this.didChangeContainerSize();
+            this._didChangeContainerSize();
         });
         this._animatedSubscriptions[sub] = this.containerSize$;
 
@@ -337,7 +347,7 @@ export default class EvergridLayout {
                 return;
             }
             this._containerOffset = p;
-            this.didChangeContainerOffset();
+            this._didChangeContainerOffset();
         });
         this._animatedSubscriptions[sub] = this.containerOffset$;
 
@@ -351,6 +361,7 @@ export default class EvergridLayout {
             // @ts-ignore: _value is private
             y: this.scale$.y._value || 0,
         };
+        let _previousScale = { ...this._scale };
         sub = this.scale$.addListener(p => {
             if (p.x === 0 || p.y === 0) {
                 // console.debug('Ignoring invalid scale value: ' + JSON.stringify(p));
@@ -359,11 +370,16 @@ export default class EvergridLayout {
             if (p.x === this._scale.x && p.y === this._scale.y) {
                 return;
             }
+            _previousScale.x = this._scale.x;
+            _previousScale.y = this._scale.y;
             // TODO: Reload all items if scale changes sign.
             this._scale = p;
-            this.didChangeScale();
+            this._didChangeScale(_previousScale, p);
         });
         this._animatedSubscriptions[sub] = this.scale$;
+
+        this._scaleTarget = {};
+        this.scaleTarget$ = new Animated.ValueXY(this._scale);
 
         this.anchor$ = normalizeAnimatedDerivedValueXY(anchor, {
             info: this,
@@ -379,7 +395,7 @@ export default class EvergridLayout {
                 return;
             }
             this._anchor = p;
-            this.didChangeAnchor();
+            this._didChangeAnchor();
         });
         this._animatedSubscriptions[sub] = this.anchor$;
 
@@ -392,11 +408,19 @@ export default class EvergridLayout {
             // @ts-ignore: _value is private
             y: this._locationOffsetBase$.y._value || 0,
         };
+        let _previousLocation = { ...this._locationOffsetBase };
         sub = this._locationOffsetBase$.addListener(p => {
+            _previousLocation.x = this._locationOffsetBase.x;
+            _previousLocation.y = this._locationOffsetBase.y;
             this._locationOffsetBase = p;
-            this.didChangeLocation();
+            this._didChangeLocationOffsetBase(_previousLocation, p);
         });
         this._animatedSubscriptions[sub] = this._locationOffsetBase$;
+
+        this._locationOffsetTarget = {};
+        this.locationOffsetTarget$ = new Animated.ValueXY(
+            this._locationOffsetBase
+        );
 
         this.viewOffset$ = normalizeAnimatedDerivedValueXY(viewOffset, {
             info: this,
@@ -797,6 +821,8 @@ export default class EvergridLayout {
         this._transferViewOffsetToLocation();
         this._panTarget$.setValue(zeroPoint());
         this._descelerationAnimation = undefined;
+        this._locationOffsetTarget = {};
+        this._scaleTarget = {};
         this._endInteration();
     }
 
@@ -879,10 +905,19 @@ export default class EvergridLayout {
         };
     }
 
-    get locationOffset(): IPoint {
+    get locationOffsetBase(): IPoint {
         return {
-            x: this._locationOffsetBase.x + this._viewOffset.x / this._scale.x,
-            y: this._locationOffsetBase.y + this._viewOffset.y / this._scale.y,
+            ...this._locationOffsetBase,
+            ...this._locationOffsetTarget,
+        };
+    }
+
+    get locationOffset(): IPoint {
+        const locationOffsetBase = this.locationOffsetBase;
+        const scale = this.scale;
+        return {
+            x: locationOffsetBase.x + this._viewOffset.x / scale.x,
+            y: locationOffsetBase.y + this._viewOffset.y / scale.y,
         };
     }
 
@@ -943,56 +978,112 @@ export default class EvergridLayout {
 
     /**
      * Called after container size has changed.
-     *
-     * Subclasses must call super implementation.
      */
-    didChangeContainerSize() {
-        this.didChangeViewportSize();
+    didChangeContainerSize() {}
+
+    private _didChangeContainerSize() {
+        this._didChangeViewportSize();
+        this.didChangeContainerSize();
     }
 
     /**
      * Called after container offset has changed.
-     *
-     * Subclasses must call super implementation.
      */
     didChangeContainerOffset() {}
 
+    private _didChangeContainerOffset() {
+        this.didChangeContainerOffset();
+    }
+
     /**
      * Called after viewport size has changed.
-     *
-     * Subclasses must call super implementation.
      */
-    didChangeViewportSize() {
+    didChangeViewportSize() {}
+
+    private _didChangeViewportSize() {
         this.setNeedsUpdate();
         this.callbacks.onViewportSizeChanged?.(this);
+        this.didChangeViewportSize();
+    }
+
+    /**
+     * Called before the location is changed as
+     * part of a scroll target.
+     *
+     * Do not modify the points.
+     */
+    willChangeLocationOffsetBase(
+        oldLocationOffsetBase: IPoint,
+        newLocationOffsetBase: IPoint
+    ) {}
+
+    private _willChangeLocationOffsetBase(
+        oldLocationOffsetBase: IPoint,
+        newLocationOffsetBase: IPoint
+    ) {
+        this.willChangeLocationOffsetBase(
+            oldLocationOffsetBase,
+            newLocationOffsetBase
+        );
     }
 
     /**
      * Called after content location has changed.
      *
-     * Subclasses must call super implementation.
+     * Note that comparing the old and new offsets
+     * may be unreliable.
+     *
+     * Do not modify the points.
      */
-    didChangeLocation() {
+    didChangeLocationOffsetBase(
+        oldLocationOffsetBase: IPoint,
+        newLocationOffsetBase: IPoint
+    ) {}
+
+    _didChangeLocationOffsetBase(
+        oldLocationOffsetBase: IPoint,
+        newLocationOffsetBase: IPoint
+    ) {
         this.setNeedsUpdate();
+        this.didChangeLocationOffsetBase(
+            oldLocationOffsetBase,
+            newLocationOffsetBase
+        );
+    }
+
+    /**
+     * Called before the scale is changed as
+     * part of a scroll target.
+     *
+     * Do not modify the points.
+     */
+    willChangeScale(oldScale: IPoint, newScale: IPoint) {}
+
+    private _willChangeScale(oldScale: IPoint, newScale: IPoint) {
+        this.willChangeScale(oldScale, newScale);
     }
 
     /**
      * Called after scale has changed.
      *
-     * Subclasses must call super implementation.
+     * Do not modify the points.
      */
-    didChangeScale() {
+    didChangeScale(oldScale: IPoint, newScale: IPoint) {}
+
+    private _didChangeScale(oldScale: IPoint, newScale: IPoint) {
         this.callbacks.onScaleChanged?.(this);
         this.setNeedsUpdate();
+        this.didChangeScale(oldScale, newScale);
     }
 
     /**
      * Called after anchor has changed.
-     *
-     * Subclasses must call super implementation.
      */
-    didChangeAnchor() {
+    didChangeAnchor() {}
+
+    private _didChangeAnchor() {
         this.setNeedsUpdate();
+        this.didChangeAnchor();
     }
 
     /**
@@ -1103,7 +1194,10 @@ export default class EvergridLayout {
     }
 
     get scale(): IPoint {
-        return { ...this._scale };
+        return {
+            ...this._scale,
+            ...this._scaleTarget,
+        };
     }
 
     getVisibleLocationRange(options?: {
@@ -1156,9 +1250,10 @@ export default class EvergridLayout {
      * @param point
      */
     scaleVector(point: IPoint): IPoint {
+        const scale = this.scale;
         return {
-            x: point.x * this._scale.x,
-            y: point.y * this._scale.y,
+            x: point.x * scale.x,
+            y: point.y * scale.y,
         };
     }
 
@@ -1206,9 +1301,10 @@ export default class EvergridLayout {
         if (this._scale.x === 0 || this._scale.y === 0) {
             return zeroPoint();
         }
+        const scale = this.scale;
         return {
-            x: point.x / this._scale.x,
-            y: point.y / this._scale.y,
+            x: point.x / scale.x,
+            y: point.y / scale.y,
         };
     }
 
@@ -1230,16 +1326,13 @@ export default class EvergridLayout {
             scale?: Partial<IPoint>;
         }
     ): IPoint {
-        let { x: xl0, y: yl0 } = this._locationOffsetBase;
+        let { x: xl0, y: yl0 } = this.locationOffsetBase;
         let { x: x0, y: y0 } = this.containerOriginOffset;
         let cp: IPoint = {
             x: this._viewOffset.x - x0,
             y: this._viewOffset.y - y0,
         };
-        let scale: IPoint = {
-            x: this._scale.x,
-            y: this._scale.y,
-        };
+        let scale = this.scale;
         if (options?.scale) {
             if (options.scale.x) {
                 scale.x *= options.scale.x;
@@ -1302,11 +1395,12 @@ export default class EvergridLayout {
         if (this._scale.x === 0 || this._scale.y === 0) {
             return zeroPoint();
         }
-        let { x: xl0, y: yl0 } = this._locationOffsetBase;
+        const scale = this.scale;
+        let { x: xl0, y: yl0 } = this.locationOffsetBase;
         let { x: x0, y: y0 } = this.containerOriginOffset;
         return {
-            x: -xl0 - (point.x - x0) / this._scale.x,
-            y: -yl0 - (point.y - y0) / this._scale.y,
+            x: -xl0 - (point.x - x0) / scale.x,
+            y: -yl0 - (point.y - y0) / scale.y,
         };
     }
 
@@ -1316,7 +1410,7 @@ export default class EvergridLayout {
         if (!options.offset.x && !options.offset.y) {
             return undefined;
         }
-        let offset = { ...this._locationOffsetBase };
+        let offset = this.locationOffsetBase;
         let hasOffset = false;
         if (options.offset.x) {
             offset.x += options.offset.x;
@@ -1327,7 +1421,7 @@ export default class EvergridLayout {
             hasOffset = true;
         }
         if (!hasOffset) {
-            return;
+            return undefined;
         }
         return this.scrollTo({
             ...options,
@@ -1344,50 +1438,93 @@ export default class EvergridLayout {
             options.onEnd?.({ finished: false });
             return undefined;
         }
+
+        this._targetDepth += 1;
+
+        if ('offset' in options) {
+            if (typeof options.offset.x !== 'undefined') {
+                this._locationOffsetTarget.x = options.offset.x;
+            }
+            if (typeof options.offset.y !== 'undefined') {
+                this._locationOffsetTarget.y = options.offset.y;
+            }
+        } else if ('range' in options) {
+            // Work out offset and scale
+            let res = this.getTransformForContentRange(options.range, options);
+            if (
+                typeof options.range[0].x !== 'undefined' ||
+                typeof options.range[1].x !== 'undefined'
+            ) {
+                this._locationOffsetTarget.x = res.offset.x;
+                this._scaleTarget.x = res.scale.x;
+            }
+            if (
+                typeof options.range[0].y !== 'undefined' ||
+                typeof options.range[1].y !== 'undefined'
+            ) {
+                this._locationOffsetTarget.y = res.offset.y;
+                this._scaleTarget.y = res.scale.y;
+            }
+        }
+
+        // We do not end the previous animation until we save the
+        // offset and scale targets, because _transferViewOffsetToLocation
+        // has side effects which may override the targets.
         this._descelerationAnimation?.stop();
         this._descelerationAnimation = undefined;
         this._transferViewOffsetToLocation();
 
-        let offset: IPoint | undefined;
-        let scale: IPoint | undefined;
-        if ('offset' in options) {
-            offset = {
-                ...this._locationOffsetBase,
-                ...options.offset,
-            };
-        } else if ('range' in options) {
-            // Work out offset and scale
-            let res = this.getTransformForContentRange(options.range, options);
-            offset = res.offset;
-            scale = res.scale;
+        this._targetDepth -= 1;
+        if (this._targetDepth > 0) {
+            // There are multiple simulateous scroll targets
+            return;
         }
 
-        if (
-            offset &&
-            offset.x === this._locationOffsetBase.x &&
-            offset.y === this._locationOffsetBase.y
-        ) {
-            // No change
-            offset = undefined;
-        }
+        let finalOffset = {
+            ...this._locationOffsetBase,
+            ...this._locationOffsetTarget,
+        };
+        let finalScale = {
+            ...this._scale,
+            ...this._scaleTarget,
+        };
 
-        if (scale && scale.x === this._scale.x && scale.y === this._scale.y) {
-            // No change
-            scale = undefined;
-        }
+        let needOffset =
+            finalOffset.x !== this._locationOffsetBase.x ||
+            finalOffset.y !== this._locationOffsetBase.y;
+        let needScale =
+            finalScale.x !== this._scale.x || finalScale.y !== this._scale.y;
 
-        if (!offset && !scale) {
-            options.onEnd?.({ finished: true });
+        if (!needOffset && !needScale) {
+            this._locationOffsetTarget = {};
+            this._scaleTarget = {};
             return undefined;
         }
-        // console.debug(`scrollTo offset: ${JSON.stringify(offset, null, 2)}, scale: ${JSON.stringify(scale, null, 2)}`);
+
+        // console.debug(
+        //     `scrollTo offset: ${JSON.stringify(
+        //         finalOffset
+        //     )} scale: ${JSON.stringify(finalScale)}`
+        // );
+
+        if (needOffset) {
+            this.locationOffsetTarget$.setValue(finalOffset);
+            this._willChangeLocationOffsetBase(
+                this._locationOffsetBase,
+                finalOffset
+            );
+        }
+        if (needScale) {
+            this.scaleTarget$.setValue(finalScale);
+            this._willChangeScale(this._scale, finalScale);
+        }
 
         this._startInteraction();
 
         if (!options.animated) {
             this.beginUpdate();
-            offset && this._locationOffsetBase$.setValue(offset);
-            scale && this.scale$.setValue(scale);
+            needOffset && this._locationOffsetBase$.setValue(finalOffset);
+            needScale && this.scale$.setValue(finalScale);
             let info = { finished: true };
             this._onEndDeceleration(info);
             options.onEnd?.(info);
@@ -1397,10 +1534,10 @@ export default class EvergridLayout {
         }
 
         let offsetAnimation: Animated.CompositeAnimation | undefined;
-        if (offset) {
+        if (needOffset) {
             if (options.timing) {
                 offsetAnimation = Animated.timing(this._locationOffsetBase$, {
-                    toValue: offset,
+                    toValue: finalOffset,
                     easing: Easing.inOut(Easing.exp),
                     ...options.timing,
                     useNativeDriver: this.useNativeDriver,
@@ -1409,7 +1546,7 @@ export default class EvergridLayout {
                 offsetAnimation = Animated.spring(
                     this._locationOffsetBase$, // Auto-multiplexed
                     {
-                        toValue: offset,
+                        toValue: finalOffset,
                         velocity:
                             options.spring?.velocity || this.contentVelocity,
                         bounciness: 0,
@@ -1421,10 +1558,10 @@ export default class EvergridLayout {
         }
 
         let scaleAnimation: Animated.CompositeAnimation | undefined;
-        if (scale) {
+        if (needScale) {
             if (options.timing) {
                 scaleAnimation = Animated.timing(this.scale$, {
-                    toValue: scale,
+                    toValue: finalScale,
                     easing: Easing.inOut(Easing.exp),
                     ...options.timing,
                     useNativeDriver: this.useNativeDriver,
@@ -1433,7 +1570,7 @@ export default class EvergridLayout {
                 scaleAnimation = Animated.spring(
                     this.scale$, // Auto-multiplexed
                     {
-                        toValue: scale,
+                        toValue: finalScale,
                         bounciness: 0,
                         ...options.spring,
                         useNativeDriver: this.useNativeDriver,
@@ -1478,8 +1615,11 @@ export default class EvergridLayout {
         offset: IPoint;
         scale: IPoint;
     } {
-        let offset: IPoint = { ...this._locationOffsetBase };
-        let scale: IPoint = { ...this._scale };
+        let offset: IPoint = {
+            ...this._locationOffsetTarget,
+            ...this._locationOffsetBase,
+        };
+        let scale = this.scale;
         let insetOffset = zeroPoint();
         let containerSize = this._containerSize;
         if (options?.insets) {
