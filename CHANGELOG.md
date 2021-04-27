@@ -6,6 +6,8 @@ Changes on the `master` branch, but not yet released, will be listed here.
 
 ## 0.2.0
 
+**27 Apr 2021**
+
 ### Features
 
 -   [[#25](https://github.com/diatche/evergrid/pull/25)] It is now possible to call `scrollTo` and `scrollBy` multiple times. Scrolling information will be merged.
