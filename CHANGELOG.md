@@ -4,6 +4,10 @@
 
 Changes on the `master` branch, but not yet released, will be listed here.
 
+### Features
+
+-   `setNeedsUpdate` and `shouldUpdate` on `LayoutSource` now accepts a `IItemUpdateManyOptions` parameter. Multiple calls to `setNeedsUpdate` merges options and when `update` is called, the merged options are used.
+
 ### Bug Fixes
 
 -   [[#26](https://github.com/diatche/evergrid/pull/26)] Fixed a bug where `scrollTo` would not work if there were certain side effects associated with desceleration.

@@ -2,7 +2,7 @@ import {
     IItemLayout,
     LayoutSource,
     LayoutSourceProps,
-    Evergrid as Grid,
+    IItemUpdateManyOptions,
 } from './internal';
 import { IItem, IItemUpdate, IPoint } from './types';
 import { forEachInstertedIndexInSet, isSetEqual, zeroPoint } from './util';
@@ -99,7 +99,10 @@ export default class CustomLayoutSource extends LayoutSource<
         }
     }
 
-    shouldUpdate() {
+    shouldUpdate(options?: IItemUpdateManyOptions) {
+        if (options?.visible) {
+            return true;
+        }
         let pendingVisibleIndexSet = this.getVisibleIndexSet();
         return !isSetEqual(pendingVisibleIndexSet, this.visibleIndexSet);
     }

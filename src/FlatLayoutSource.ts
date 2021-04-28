@@ -1,4 +1,9 @@
-import { IItemLayout, LayoutSource, LayoutSourceProps } from './internal';
+import {
+    IItemLayout,
+    IItemUpdateManyOptions,
+    LayoutSource,
+    LayoutSourceProps,
+} from './internal';
 import { IAnimationBaseOptions, IItem, IItemUpdate, IPoint } from './types';
 import {
     emptyRange,
@@ -127,7 +132,10 @@ export default class FlatLayoutSource extends LayoutSource<
         this.visibleRange[1] -= 1;
     }
 
-    shouldUpdate() {
+    shouldUpdate(options?: IItemUpdateManyOptions) {
+        if (options?.visible) {
+            return true;
+        }
         let pendingVisibleRange = this.getVisibleRange();
         return !isRangeEqual(pendingVisibleRange, this.visibleRange);
     }

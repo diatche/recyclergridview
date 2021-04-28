@@ -2,7 +2,7 @@ import {
     IItemLayout,
     LayoutSource,
     LayoutSourceProps,
-    Evergrid as Grid,
+    IItemUpdateManyOptions,
 } from './internal';
 import { IItem, IItemUpdate, IPoint } from './types';
 import {
@@ -108,7 +108,10 @@ export default class GridLayoutSource extends LayoutSource<
         return { ...index };
     }
 
-    shouldUpdate() {
+    shouldUpdate(options?: IItemUpdateManyOptions) {
+        if (options?.visible) {
+            return true;
+        }
         let pendingVisibleRange = this.getVisibleGridIndexRange();
         return !isPointRangeEqual(pendingVisibleRange, this.visibleRange);
     }

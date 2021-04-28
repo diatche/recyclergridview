@@ -269,6 +269,7 @@ export default abstract class LayoutSource<
         [id: string]: Animated.Value | Animated.ValueXY;
     } = {};
     private _updateDepth = 0;
+    private _mergedUpdatedOptions: IItemUpdateManyOptions = {};
     private _updateTimer: any;
     private _updateInfoQueue: (ILayoutUpdateInfo | undefined)[] = [];
     private _iteratedItemUpdates = false;
@@ -515,13 +516,21 @@ export default abstract class LayoutSource<
         item?.ref.current?.setNeedsRender();
     }
 
-    setNeedsUpdate() {
-        if (this.isUpdating) {
+    setNeedsUpdate(options?: IItemUpdateManyOptions) {
+        if (this._updateDepth > 0) {
             // console.debug(`[${this.id}] already updating`);
             return;
         }
+        this._mergedUpdatedOptions = {
+            ...this._mergedUpdatedOptions,
+            ...options,
+        };
+        if (this.isUpdating) {
+            // console.debug(`[${this.id}] update already scheduled`);
+            return;
+        }
 
-        if (this.shouldUpdate()) {
+        if (this.shouldUpdate(this._mergedUpdatedOptions)) {
             this.scheduleUpdate();
         }
     }
@@ -553,7 +562,7 @@ export default abstract class LayoutSource<
     /**
      * Return true when a layout update is needed.
      */
-    shouldUpdate() {
+    shouldUpdate(options?: IItemUpdateManyOptions) {
         return true;
     }
 
@@ -1238,7 +1247,8 @@ export default abstract class LayoutSource<
             queued = false,
             forceRender = false,
             ...animationOptions
-        } = options || {};
+        } = { ...this._mergedUpdatedOptions, ...options };
+        this._mergedUpdatedOptions = {};
         let animations: Animated.CompositeAnimation[] = [];
         let animation: Animated.CompositeAnimation | undefined;
         let needsRender = false;
