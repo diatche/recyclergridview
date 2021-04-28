@@ -821,8 +821,7 @@ export default class EvergridLayout {
         this._transferViewOffsetToLocation();
         this._panTarget$.setValue(zeroPoint());
         this._descelerationAnimation = undefined;
-        this._locationOffsetTarget = {};
-        this._scaleTarget = {};
+        this._resetScrollTargetIfNeeded();
         this._endInteration();
     }
 
@@ -1439,6 +1438,13 @@ export default class EvergridLayout {
             return undefined;
         }
 
+        if (this._updateDepth === 0) {
+            this._locationOffsetTarget.x = this._locationOffsetBase.x;
+            this._locationOffsetTarget.y = this._locationOffsetBase.y;
+            this._scaleTarget.x = this._scale.x;
+            this._scaleTarget.y = this._scale.y;
+        }
+
         this._targetDepth += 1;
 
         if ('offset' in options) {
@@ -1480,26 +1486,20 @@ export default class EvergridLayout {
             return;
         }
 
-        let finalOffset = {
-            ...this._locationOffsetBase,
-            ...this._locationOffsetTarget,
-        };
-        let finalScale = {
-            ...this._scale,
-            ...this._scaleTarget,
-        };
-
         let needOffset =
-            finalOffset.x !== this._locationOffsetBase.x ||
-            finalOffset.y !== this._locationOffsetBase.y;
+            this._locationOffsetTarget.x !== this._locationOffsetBase.x ||
+            this._locationOffsetTarget.y !== this._locationOffsetBase.y;
         let needScale =
-            finalScale.x !== this._scale.x || finalScale.y !== this._scale.y;
+            this._scaleTarget.x !== this._scale.x ||
+            this._scaleTarget.y !== this._scale.y;
 
         if (!needOffset && !needScale) {
-            this._locationOffsetTarget = {};
-            this._scaleTarget = {};
+            this._resetScrollTargetIfNeeded();
             return undefined;
         }
+
+        const finalOffset = this._locationOffsetTarget as IPoint;
+        const finalScale = this._scaleTarget as IPoint;
 
         // console.debug(
         //     `scrollTo offset: ${JSON.stringify(
@@ -1657,6 +1657,14 @@ export default class EvergridLayout {
             }
         }
         return { offset, scale };
+    }
+
+    private _resetScrollTargetIfNeeded() {
+        if (this._targetDepth > 0) {
+            return;
+        }
+        this._locationOffsetTarget = {};
+        this._scaleTarget = {};
     }
 
     createItemViewRef(): React.RefObject<ItemView> {
