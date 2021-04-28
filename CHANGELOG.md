@@ -4,6 +4,10 @@
 
 Changes on the `master` branch, but not yet released, will be listed here.
 
+### Bug Fixes
+
+-   [[#26](https://github.com/diatche/evergrid/pull/26)] Fixed a bug where `scrollTo` would not work if there were certain side effects associated with desceleration.
+
 ## 0.2.0
 
 **27 Apr 2021**
