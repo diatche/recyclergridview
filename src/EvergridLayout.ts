@@ -10,6 +10,7 @@ import {
     PanResponderGestureState,
     PanResponderInstance,
 } from 'react-native';
+import { WeakRef } from '@ungap/weakrefs';
 import {
     Evergrid,
     ItemView,
@@ -26,13 +27,7 @@ import {
     PanPressableCallbacks,
     IInsets,
 } from './types';
-import {
-    insetPoint,
-    insetSize,
-    insetTranslation,
-    weakref,
-    zeroPoint,
-} from './util';
+import { insetPoint, insetSize, insetTranslation, zeroPoint } from './util';
 import {
     concatFunctions,
     insetSize$,
@@ -233,7 +228,7 @@ export default class EvergridLayout {
     readonly anchor$: Animated.ValueXY;
     readonly panResponder?: PanResponderInstance;
 
-    private _weakViewRef = weakref<Evergrid>();
+    private _weakViewRef?: WeakRef<Evergrid>;
 
     private _locationOffsetBase$: Animated.ValueXY;
     private _locationOffsetBase: IPoint;
@@ -547,18 +542,22 @@ export default class EvergridLayout {
     }
 
     get view(): Evergrid {
-        return this._weakViewRef.getOrFail();
+        let view = this._weakViewRef?.deref();
+        if (!view) {
+            throw new Error('Trying to access a released object');
+        }
+        return view;
     }
 
     private get _maybeView(): Evergrid | undefined {
-        return this._weakViewRef.get();
+        return this._weakViewRef?.deref();
     }
 
     set view(view: Evergrid) {
         if (!view || !(view instanceof Evergrid)) {
             throw new Error('Invalid Evergrid view');
         }
-        this._weakViewRef.set(view);
+        this._weakViewRef = new WeakRef(view);
     }
 
     get layoutSources(): LayoutSource[] {
