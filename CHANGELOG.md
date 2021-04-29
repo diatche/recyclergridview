@@ -4,6 +4,10 @@
 
 Changes on the `master` branch, but not yet released, will be listed here.
 
+## 0.3.0
+
+**30 Apr 2021**
+
 ### Features
 
 -   `setNeedsUpdate` and `shouldUpdate` on `LayoutSource` now accepts a `IItemUpdateManyOptions` parameter. Multiple calls to `setNeedsUpdate` merges options and when `update` is called, the merged options are used.
