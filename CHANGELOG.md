@@ -7,10 +7,17 @@ Changes on the `master` branch, but not yet released, will be listed here.
 ### Features
 
 -   `setNeedsUpdate` and `shouldUpdate` on `LayoutSource` now accepts a `IItemUpdateManyOptions` parameter. Multiple calls to `setNeedsUpdate` merges options and when `update` is called, the merged options are used.
+-   [[#27](https://github.com/diatche/evergrid/pull/27)] Added `linkLayout` on `EvergridLayout` to allow linking multiple grids in the x, y, ot both axes. This allows both grids to share target scroll information. A `linkedLayouts` configuration property was also added to automatically link required animated values along an axis.
+-   [[#27](https://github.com/diatche/evergrid/pull/27)] Added `setNeedsUpdate` to `DataSource`.
+-   [[#27](https://github.com/diatche/evergrid/pull/27)] `EvergridLayout#locationOffsetBase$` is now a public property.
 
 ### Bug Fixes
 
 -   [[#26](https://github.com/diatche/evergrid/pull/26)] Fixed a bug where `scrollTo` would not work if there were certain side effects associated with desceleration.
+
+### Breaking Changes
+
+-   [[#27](https://github.com/diatche/evergrid/pull/27)] Removed `locationOffsetTarget$` and `scaleTarget$` animated properties from `EvergridLayout`. Use `willChangeLocationOffsetBase` and `willChangeScale` callbacks respectively.
 
 ## 0.2.0
 

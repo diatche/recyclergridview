@@ -25,7 +25,6 @@ import {
     insetSize,
     insetTranslation,
     isPointInsideItemLayout,
-    weakref,
     zeroPoint,
 } from './util';
 import {
@@ -35,6 +34,7 @@ import {
     normalizeAnimatedDerivedValue,
     normalizeAnimatedDerivedValueXY,
 } from './rnUtil';
+import { WeakRef } from '@ungap/weakrefs';
 
 const kDefaultProps: Partial<LayoutSourceProps<any>> = {
     showDuration: 150,
@@ -274,7 +274,7 @@ export default abstract class LayoutSource<
     private _updateInfoQueue: (ILayoutUpdateInfo | undefined)[] = [];
     private _iteratedItemUpdates = false;
 
-    private _weakRootRef = weakref<EvergridLayout>();
+    private _weakRootRef?: WeakRef<EvergridLayout>;
 
     constructor(props: Props) {
         this.props = {
@@ -306,18 +306,22 @@ export default abstract class LayoutSource<
     }
 
     get root(): EvergridLayout {
-        return this._weakRootRef.getOrFail();
+        let root = this._weakRootRef?.deref();
+        if (!root) {
+            throw new Error('Trying to access a released object');
+        }
+        return root;
     }
 
     private get _maybeRoot(): EvergridLayout | undefined {
-        return this._weakRootRef.get();
+        return this._weakRootRef?.deref();
     }
 
     private _setRoot(root: EvergridLayout) {
         if (!root || !(root instanceof EvergridLayout)) {
             throw new Error('Invalid root layout');
         }
-        this._weakRootRef.set(root);
+        this._weakRootRef = new WeakRef(root);
     }
 
     get itemOrigin(): IPoint {
