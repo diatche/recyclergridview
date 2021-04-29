@@ -212,4 +212,9 @@ export interface PanPressableOptions {
     longPressMaxDistance?: number;
 }
 
+export interface LayoutLinkOptions {
+    axis: LayoutLinkAxis;
+    mode?: 'auto' | 'manual';
+}
+
 export type LayoutLinkAxis = 'x' | 'y' | 'xy';
