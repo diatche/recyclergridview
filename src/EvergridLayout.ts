@@ -562,7 +562,7 @@ export default class EvergridLayout {
     }
 
     linkLayout(layout: EvergridLayout, options: { axis: LayoutLinkAxis }) {
-        if (!(layout instanceof EvergridLayout)) {
+        if (!(layout instanceof EvergridLayout) || layout === this) {
             throw new Error('Invalid EvergridLayout');
         }
         if (kLayoutLinkAxes.indexOf(options.axis) < 0) {
@@ -1583,11 +1583,6 @@ export default class EvergridLayout {
 
         this._targetDepth += 1;
 
-        // Update linked layouts
-        for (let layout of this.allLinkedLayouts()) {
-            layout._targetDepth += 1;
-        }
-
         if ('offset' in options) {
             if (typeof options.offset.x !== 'undefined') {
                 this._locationOffsetTarget.x = options.offset.x;
@@ -1622,11 +1617,6 @@ export default class EvergridLayout {
         this._transferViewOffsetToLocation();
 
         this._targetDepth -= 1;
-
-        // Update linked layouts
-        for (let layout of this.allLinkedLayouts()) {
-            layout._targetDepth -= 1;
-        }
 
         if (this._targetDepth > 0) {
             // There are multiple simulateous scroll targets
