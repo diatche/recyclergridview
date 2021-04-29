@@ -14,6 +14,7 @@ import { WeakRef } from '@ungap/weakrefs';
 import {
     Evergrid,
     ItemView,
+    kLayoutLinkAxes,
     kPanPressableCallbackKeys,
     kPanResponderCallbackKeys,
     LayoutSource,
@@ -26,6 +27,7 @@ import {
     PanPressableOptions,
     PanPressableCallbacks,
     IInsets,
+    LayoutLinkAxis,
 } from './types';
 import { insetPoint, insetSize, insetTranslation, zeroPoint } from './util';
 import {
@@ -259,8 +261,6 @@ export default class EvergridLayout {
     private _updateTimer?: any;
     // private _mounted = false;
 
-    readonly locationOffsetTarget$: Animated.ValueXY;
-    readonly scaleTarget$: Animated.ValueXY;
     private _locationOffsetTarget: Partial<IPoint>;
     private _scaleTarget: Partial<IPoint>;
     private _targetDepth = 0;
@@ -268,7 +268,8 @@ export default class EvergridLayout {
     private _linkedGridRefs: {
         x: WeakRef<EvergridLayout>[];
         y: WeakRef<EvergridLayout>[];
-    } = { x: [], y: [] };
+        xy: WeakRef<EvergridLayout>[];
+    } = { x: [], y: [], xy: [] };
 
     constructor(options?: EvergridLayoutCallbacks & EvergridLayoutProps) {
         let {
@@ -379,7 +380,6 @@ export default class EvergridLayout {
         this._animatedSubscriptions[sub] = this.scale$;
 
         this._scaleTarget = {};
-        this.scaleTarget$ = new Animated.ValueXY(this._scale);
 
         this.anchor$ = normalizeAnimatedDerivedValueXY(anchor, {
             info: this,
@@ -418,9 +418,6 @@ export default class EvergridLayout {
         this._animatedSubscriptions[sub] = this._locationOffsetBase$;
 
         this._locationOffsetTarget = {};
-        this.locationOffsetTarget$ = new Animated.ValueXY(
-            this._locationOffsetBase
-        );
 
         this.viewOffset$ = normalizeAnimatedDerivedValueXY(viewOffset, {
             info: this,
@@ -546,35 +543,78 @@ export default class EvergridLayout {
         this._resetLongPress();
     }
 
-    linkedLayouts(axis: 'x' | 'y'): EvergridLayout[] {
-        return this._linkedGridRefs[axis].map(ref => {
-            let grid = ref.deref();
-            if (!grid) {
-                throw new Error('Trying to access a released object');
-            }
-            return grid;
-        });
+    linkedLayouts(axis: LayoutLinkAxis): EvergridLayout[] {
+        return this._linkedGridRefs[axis]
+            .map(ref => ref.deref())
+            .filter(x => !!x);
     }
 
-    linkLayout(layout: EvergridLayout, options: { axis: 'x' | 'y' }) {
+    allLinkedLayouts(): EvergridLayout[] {
+        let layouts: EvergridLayout[] = [];
+        for (let axis of kLayoutLinkAxes) {
+            for (let layout of this.linkedLayouts(axis)) {
+                if (layouts.indexOf(layout) < 0) {
+                    layouts.push(layout);
+                }
+            }
+        }
+        return layouts;
+    }
+
+    linkLayout(layout: EvergridLayout, options: { axis: LayoutLinkAxis }) {
         if (!(layout instanceof EvergridLayout)) {
             throw new Error('Invalid EvergridLayout');
         }
-        if (!['x', 'y'].includes(options.axis)) {
+        if (kLayoutLinkAxes.indexOf(options.axis) < 0) {
             throw new Error('Invalid axis');
         }
-        if (!this.linkedLayouts(options.axis).includes(layout)) {
+        if (this.linkedLayouts(options.axis).indexOf(layout) < 0) {
             this._linkedGridRefs[options.axis].push(new WeakRef(layout));
             layout._linkedGridRefs[options.axis].push(new WeakRef(this));
+
+            this._checkLayoutLink(layout, options);
+
             let cbOptions = { ...options, receiver: this };
             this.didLinkWithLayout(layout, cbOptions);
             layout.didLinkWithLayout(this, cbOptions);
         }
     }
 
+    private _checkLayoutLink(
+        layout: EvergridLayout,
+        options: { axis: LayoutLinkAxis }
+    ) {
+        let checkAxes: ('x' | 'y')[] = [];
+        if (options.axis === 'xy') {
+            checkAxes = ['x', 'y'];
+        } else {
+            checkAxes = [options.axis];
+        }
+        for (let axis of checkAxes) {
+            if (
+                this._locationOffsetBase$[axis] !==
+                layout._locationOffsetBase$[axis]
+            ) {
+                console.warn(
+                    `You linked grids in the ${axis}-direction, but didn't use the same offset.${axis}. Create an animated value and use it in both grids.`
+                );
+            }
+            if (this.viewOffset$[axis] !== layout.viewOffset$[axis]) {
+                console.warn(
+                    `You linked grids in the ${axis}-direction, but didn't use the same viewOffset.${axis}. Create an animated value and use it in both grids.`
+                );
+            }
+            if (this.scale$[axis] !== layout.scale$[axis]) {
+                console.warn(
+                    `You linked grids in the ${axis}-direction, but didn't use the same scale.${axis}. Create an animated value and use it in both grids.`
+                );
+            }
+        }
+    }
+
     didLinkWithLayout(
         layout: EvergridLayout,
-        options: { axis: 'x' | 'y'; receiver: EvergridLayout }
+        options: { axis: LayoutLinkAxis; receiver: EvergridLayout }
     ) {}
 
     get view(): Evergrid {
@@ -1059,6 +1099,38 @@ export default class EvergridLayout {
             oldLocationOffsetBase,
             newLocationOffsetBase
         );
+
+        // Notify linked layouts
+        for (let layout of this.linkedLayouts('x')) {
+            layout.willChangeLocationOffsetBase(
+                {
+                    x: oldLocationOffsetBase.x,
+                    y: layout.locationOffsetBase.y,
+                },
+                {
+                    x: newLocationOffsetBase.x,
+                    y: layout.locationOffsetBase.y,
+                }
+            );
+        }
+        for (let layout of this.linkedLayouts('y')) {
+            layout.willChangeLocationOffsetBase(
+                {
+                    x: layout.locationOffsetBase.x,
+                    y: oldLocationOffsetBase.y,
+                },
+                {
+                    x: layout.locationOffsetBase.x,
+                    y: newLocationOffsetBase.y,
+                }
+            );
+        }
+        for (let layout of this.linkedLayouts('xy')) {
+            layout.willChangeLocationOffsetBase(
+                oldLocationOffsetBase,
+                newLocationOffsetBase
+            );
+        }
     }
 
     /**
@@ -1095,6 +1167,35 @@ export default class EvergridLayout {
 
     private _willChangeScale(oldScale: IPoint, newScale: IPoint) {
         this.willChangeScale(oldScale, newScale);
+
+        // Notify linked layouts
+        for (let layout of this.linkedLayouts('x')) {
+            layout.willChangeScale(
+                {
+                    x: oldScale.x,
+                    y: layout.locationOffsetBase.y,
+                },
+                {
+                    x: newScale.x,
+                    y: layout.locationOffsetBase.y,
+                }
+            );
+        }
+        for (let layout of this.linkedLayouts('y')) {
+            layout.willChangeScale(
+                {
+                    x: layout.locationOffsetBase.x,
+                    y: oldScale.y,
+                },
+                {
+                    x: layout.locationOffsetBase.x,
+                    y: newScale.y,
+                }
+            );
+        }
+        for (let layout of this.linkedLayouts('xy')) {
+            layout.willChangeScale(oldScale, newScale);
+        }
     }
 
     /**
@@ -1482,6 +1583,11 @@ export default class EvergridLayout {
 
         this._targetDepth += 1;
 
+        // Update linked layouts
+        for (let layout of this.allLinkedLayouts()) {
+            layout._targetDepth += 1;
+        }
+
         if ('offset' in options) {
             if (typeof options.offset.x !== 'undefined') {
                 this._locationOffsetTarget.x = options.offset.x;
@@ -1516,6 +1622,12 @@ export default class EvergridLayout {
         this._transferViewOffsetToLocation();
 
         this._targetDepth -= 1;
+
+        // Update linked layouts
+        for (let layout of this.allLinkedLayouts()) {
+            layout._targetDepth -= 1;
+        }
+
         if (this._targetDepth > 0) {
             // There are multiple simulateous scroll targets
             return;
@@ -1542,15 +1654,29 @@ export default class EvergridLayout {
         //     )} scale: ${JSON.stringify(finalScale)}`
         // );
 
+        // Update linked layouts
+        for (let layout of this.linkedLayouts('x')) {
+            layout._locationOffsetTarget.x = finalOffset.x;
+            layout._scaleTarget.x = finalScale.x;
+        }
+        for (let layout of this.linkedLayouts('y')) {
+            layout._locationOffsetTarget.y = finalOffset.y;
+            layout._scaleTarget.y = finalScale.y;
+        }
+        for (let layout of this.linkedLayouts('xy')) {
+            layout._locationOffsetTarget.x = finalOffset.x;
+            layout._locationOffsetTarget.y = finalOffset.y;
+            layout._scaleTarget.x = finalScale.x;
+            layout._scaleTarget.y = finalScale.y;
+        }
+
         if (needOffset) {
-            this.locationOffsetTarget$.setValue(finalOffset);
             this._willChangeLocationOffsetBase(
                 this._locationOffsetBase,
                 finalOffset
             );
         }
         if (needScale) {
-            this.scaleTarget$.setValue(finalScale);
             this._willChangeScale(this._scale, finalScale);
         }
 
@@ -1700,6 +1826,26 @@ export default class EvergridLayout {
         }
         this._locationOffsetTarget = {};
         this._scaleTarget = {};
+
+        // Update linked layouts
+        for (let layout of this.linkedLayouts('x')) {
+            if (layout._targetDepth === 0) {
+                delete layout._locationOffsetTarget.x;
+                delete layout._scaleTarget.x;
+            }
+        }
+        for (let layout of this.linkedLayouts('y')) {
+            if (layout._targetDepth === 0) {
+                delete layout._locationOffsetTarget.y;
+                delete layout._scaleTarget.y;
+            }
+        }
+        for (let layout of this.linkedLayouts('xy')) {
+            if (layout._targetDepth === 0) {
+                layout._locationOffsetTarget = {};
+                layout._scaleTarget = {};
+            }
+        }
     }
 
     createItemViewRef(): React.RefObject<ItemView> {

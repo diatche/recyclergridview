@@ -1,5 +1,5 @@
 import { PanResponderCallbacks } from 'react-native';
-import { IInsets, PanPressableCallbacks } from './types';
+import { IInsets, LayoutLinkAxis, PanPressableCallbacks } from './types';
 
 export const kInsetKeys: (keyof IInsets)[] = ['top', 'right', 'bottom', 'left'];
 export const kZeroInsets: IInsets = {
@@ -32,3 +32,5 @@ export const kPanResponderCallbackKeys: (keyof PanResponderCallbacks)[] = [
     'onPanResponderTerminationRequest',
     'onShouldBlockNativeResponder',
 ];
+
+export const kLayoutLinkAxes: readonly LayoutLinkAxis[] = ['x', 'y', 'xy'];
