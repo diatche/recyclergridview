@@ -265,6 +265,11 @@ export default class EvergridLayout {
     private _scaleTarget: Partial<IPoint>;
     private _targetDepth = 0;
 
+    private _linkedGridRefs: {
+        x: WeakRef<EvergridLayout>[];
+        y: WeakRef<EvergridLayout>[];
+    } = { x: [], y: [] };
+
     constructor(options?: EvergridLayoutCallbacks & EvergridLayoutProps) {
         let {
             layoutSources,
@@ -540,6 +545,37 @@ export default class EvergridLayout {
 
         this._resetLongPress();
     }
+
+    linkedLayouts(axis: 'x' | 'y'): EvergridLayout[] {
+        return this._linkedGridRefs[axis].map(ref => {
+            let grid = ref.deref();
+            if (!grid) {
+                throw new Error('Trying to access a released object');
+            }
+            return grid;
+        });
+    }
+
+    linkLayout(layout: EvergridLayout, options: { axis: 'x' | 'y' }) {
+        if (!(layout instanceof EvergridLayout)) {
+            throw new Error('Invalid EvergridLayout');
+        }
+        if (!['x', 'y'].includes(options.axis)) {
+            throw new Error('Invalid axis');
+        }
+        if (!this.linkedLayouts(options.axis).includes(layout)) {
+            this._linkedGridRefs[options.axis].push(new WeakRef(layout));
+            layout._linkedGridRefs[options.axis].push(new WeakRef(this));
+            let cbOptions = { ...options, receiver: this };
+            this.didLinkWithLayout(layout, cbOptions);
+            layout.didLinkWithLayout(this, cbOptions);
+        }
+    }
+
+    didLinkWithLayout(
+        layout: EvergridLayout,
+        options: { axis: 'x' | 'y'; receiver: EvergridLayout }
+    ) {}
 
     get view(): Evergrid {
         let view = this._weakViewRef?.deref();
