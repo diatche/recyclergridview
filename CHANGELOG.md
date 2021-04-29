@@ -8,6 +8,7 @@ Changes on the `master` branch, but not yet released, will be listed here.
 
 -   `setNeedsUpdate` and `shouldUpdate` on `LayoutSource` now accepts a `IItemUpdateManyOptions` parameter. Multiple calls to `setNeedsUpdate` merges options and when `update` is called, the merged options are used.
 -   Added `linkLayout` on `EvergridLayout` to allow linking multiple grids in the x, y, ot both axes. This allows both grids to share target scroll information.
+-   Added `setNeedsUpdate` to `DataSource`.
 
 ### Bug Fixes
 
